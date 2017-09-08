@@ -159,3 +159,15 @@ tallyHelperDict toKey toVal xs partial =
                 (partial
                     |> Dict.update (toKey hd) (Maybe.withDefault [] >> (::) (toVal hd) >> Just)
                 )
+
+
+tallyReduce : (a -> comparable) -> (a -> value) -> List a -> Dict comparable (List value)
+tallyReduce toKey toVal xs =
+    List.foldl
+        (\x ->
+            Dict.update
+                (toKey x)
+                (Maybe.withDefault [] >> (::) (toVal x) >> Just)
+        )
+        Dict.empty
+        xs
