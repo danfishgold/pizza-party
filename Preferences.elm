@@ -40,7 +40,7 @@ add user topping delta (Preferences prefs) =
                 Preferences prefs
 
             ( Just val, False ) ->
-                if val + delta <= 0 then
+                if val + delta < 0 then
                     Preferences prefs
                 else
                     Dict.insert k (val + delta) prefs |> Preferences
