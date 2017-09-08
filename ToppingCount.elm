@@ -12,7 +12,10 @@ subtract : ToppingCount -> ToppingCount -> ToppingCount
 subtract opt1 opt2 =
     let
         merger key n m diffDict =
-            Dict.insert key (n - m) diffDict
+            if n == m then
+                diffDict
+            else
+                Dict.insert key (n - m) diffDict
     in
         Dict.merge
             (\k n dict -> merger k n 0 dict)
