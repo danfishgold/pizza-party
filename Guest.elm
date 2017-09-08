@@ -3,41 +3,22 @@ module Guest exposing (..)
 import Html exposing (Html, program, div, button, text)
 import Html.Attributes exposing (disabled)
 import Html.Events exposing (onClick)
-
-
-type alias Topping =
-    { name : String }
-
-
-type alias User =
-    { username : String }
-
-
-type alias Preferences =
-    List ( User, List Topping )
+import Topping exposing (Topping)
+import User exposing (User)
+import Preferences as Pref exposing (Preferences)
 
 
 type alias Model =
-    { slicesPerPart : Int
-    , partsPerPie : Int
-    , users : List User
-    , counter : Int
-    , preferences : Preferences
-    }
+    {}
 
 
 type Msg
-    = SetCounter Int
+    = Msg
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { slicesPerPart = 2
-      , partsPerPie = 4
-      , users = []
-      , preferences = []
-      , counter = 0
-      }
+    ( {}
     , Cmd.none
     )
 
@@ -50,8 +31,8 @@ subscriptions model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SetCounter value ->
-            ( { model | counter = value }, Cmd.none )
+        Msg ->
+            ( model, Cmd.none )
 
 
 
@@ -60,21 +41,37 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    counter model.counter SetCounter
+    text ""
 
 
-counter : Int -> (Int -> msg) -> Html msg
-counter value toMsg =
+userView : (Topping -> msg) -> (Topping -> msg) -> (Topping -> Int) -> List Topping -> Preferences -> Html msg
+userView decrease increase value toppings prefs =
+    let
+        counter topping =
+            toppingCounter
+                (decrease topping)
+                (increase topping)
+                (value topping)
+                topping
+    in
+        List.map counter toppings |> div []
+
+
+toppingCounter : msg -> msg -> Int -> Topping -> Html msg
+toppingCounter decrease increase value topping =
     div []
-        [ button
-            [ if value == 0 then
-                disabled True
-              else
-                onClick <| toMsg <| value - 1
+        [ text topping.name
+        , div []
+            [ button
+                [ if value == 0 then
+                    disabled True
+                  else
+                    onClick <| decrease
+                ]
+                [ text "-" ]
+            , text <| toString value
+            , button [ onClick <| increase ] [ text "+" ]
             ]
-            [ text "-" ]
-        , text <| toString value
-        , button [ onClick <| toMsg <| value + 1 ] [ text "+" ]
         ]
 
 

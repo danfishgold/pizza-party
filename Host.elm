@@ -2,7 +2,7 @@ module Host exposing (..)
 
 import Html exposing (Html, program, div, h1, h2, span, text)
 import Config exposing (Config)
-import Guest exposing (counter)
+import Guest exposing (userView)
 import Preferences as Pref exposing (Preferences)
 import User exposing (User)
 import Topping exposing (Topping)
@@ -71,25 +71,13 @@ users =
 userView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> Preferences -> User -> Html msg
 userView decrease increase toppings prefs user =
     let
-        counter value topping =
-            toppingCounter
-                (decrease user topping)
-                (increase user topping)
-                topping
-                (Pref.get user topping prefs |> Maybe.withDefault 0)
+        value topping =
+            (Pref.get user topping prefs |> Maybe.withDefault 0)
     in
         div []
             [ h2 [] [ text user.name ]
-            , toppings |> List.map (counter 0) |> div []
+            , Guest.userView (decrease user) (increase user) value toppings prefs
             ]
-
-
-toppingCounter : msg -> msg -> Topping -> Int -> Html msg
-toppingCounter decrease increase topping value =
-    div []
-        [ text topping.name
-        , counter value decrease increase
-        ]
 
 
 
