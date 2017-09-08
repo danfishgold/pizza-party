@@ -1,6 +1,6 @@
 module Host exposing (..)
 
-import Html exposing (Html, program, text)
+import Html exposing (Html, program, div, text)
 import Config exposing (Config)
 import Dict exposing (Dict)
 
@@ -28,11 +28,9 @@ type Msg
     = Msg
 
 
-validPieCount : Int -> Preferences -> Bool
-validPieCount slicesPerPizza preferences =
-    preferences
-        |> List.length
-        |> \len -> len % slicesPerPizza == 0
+validPieCount : Int -> List ( Topping, Int ) -> Bool
+validPieCount slicesPerPizza slices =
+    slices |> List.map Tuple.second |> List.sum |> \n -> n % slicesPerPizza == 0
 
 
 validPartCount : Int -> ( Topping, List User ) -> Bool
@@ -49,6 +47,31 @@ toppingTallies : Preferences -> List ( Topping, List User )
 toppingTallies preferences =
     preferences
         |> tally Tuple.second Tuple.first
+
+
+thing : Config -> Preferences -> List (List ( Topping, Int ))
+thing { slicesPerPart, partsPerPie } preferences =
+    preferences
+        |> toppingTallies
+        |> List.map (\( t, us ) -> ( t, List.length us ))
+        |> List.map
+            (\( t, n ) ->
+                ( t
+                , nearestWholes slicesPerPart n
+                )
+            )
+        |> productReduce
+        |> List.filter (validPieCount (slicesPerPart * partsPerPie))
+
+
+nearestWholes : Int -> Int -> List Int
+nearestWholes bin n =
+    (if n % bin == 0 then
+        [ n - 1, n, n + 1 ]
+     else
+        [ bin * floor (toFloat n / toFloat bin), ceiling (toFloat n / toFloat bin) ]
+    )
+        |> List.filter (\n -> n >= 0)
 
 
 init : ( Model, Cmd Msg )
@@ -82,7 +105,9 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    text ""
+    thing model.config model.preferences
+        |> List.map (\toppings -> div [] [ text <| toString toppings ])
+        |> div []
 
 
 
