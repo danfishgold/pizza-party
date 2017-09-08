@@ -1,16 +1,21 @@
 module Host exposing (..)
 
-import Html exposing (Html, program, div, text)
+import Html exposing (Html, program, div, h1, h2, span, text)
 import Config exposing (Config)
 import Dict exposing (Dict)
+import Guest exposing (counter)
 
 
 type alias Topping =
-    { name : String }
+    String
 
 
 type alias User =
-    { username : String }
+    String
+
+
+type alias UserPreferences =
+    Dict ( User, Topping ) Int
 
 
 type alias Preferences =
@@ -19,13 +24,13 @@ type alias Preferences =
 
 type alias Model =
     { config : Config
-    , users : List User
-    , preferences : Preferences
+    , userPrefs : UserPreferences
     }
 
 
 type Msg
-    = Msg
+    = Add User Topping
+    | Remove User Topping
 
 
 validPieCount : Int -> List ( Topping, Int ) -> Bool
@@ -49,29 +54,53 @@ toppingTallies preferences =
         |> tally Tuple.second Tuple.first
 
 
-thing : Config -> Preferences -> List (List ( Topping, Int ))
+thing : Config -> UserPreferences -> List ( List ( Topping, Int ), Int )
 thing { slicesPerPart, partsPerPie } preferences =
-    preferences
-        |> toppingTallies
-        |> List.map (\( t, us ) -> ( t, List.length us ))
-        |> List.map
-            (\( t, n ) ->
-                ( t
-                , nearestWholes slicesPerPart n
-                )
-            )
-        |> productReduce
-        |> List.filter (validPieCount (slicesPerPart * partsPerPie))
+    let
+        asList : List ( Topping, Int )
+        asList =
+            preferences
+                |> Dict.toList
+                |> List.concatMap (\( ( u, t ), n ) -> List.repeat n ( u, t ))
+                |> toppingTallies
+                |> List.map (\( t, us ) -> ( t, List.length us ))
+    in
+        asList
+            |> List.map
+                (\( t, n ) -> ( t, nearestWholes slicesPerPart n ))
+            |> productReduce
+            |> List.filter (validPieCount (slicesPerPart * partsPerPie))
+            |> List.map (\opt -> ( opt, distance opt asList ))
+            |> List.sortBy Tuple.second
 
 
 nearestWholes : Int -> Int -> List Int
 nearestWholes bin n =
     (if n % bin == 0 then
-        [ n - 1, n, n + 1 ]
+        [ n - bin, n, n + bin ]
      else
-        [ bin * floor (toFloat n / toFloat bin), ceiling (toFloat n / toFloat bin) ]
+        let
+            fraction =
+                (toFloat n / toFloat bin)
+        in
+            [ bin * floor fraction, bin * ceiling fraction ]
     )
         |> List.filter (\n -> n >= 0)
+
+
+distance : List ( Topping, Int ) -> List ( Topping, Int ) -> Int
+distance opt1 opt2 =
+    let
+        merger key n m val =
+            val + abs (n - m)
+    in
+        Dict.merge
+            (\k n dict -> merger k n 0 dict)
+            (\k n m dict -> merger k n m dict)
+            (\k m dict -> merger k 0 m dict)
+            (Dict.fromList opt1)
+            (Dict.fromList opt2)
+            0
 
 
 init : ( Model, Cmd Msg )
@@ -80,8 +109,7 @@ init =
             { slicesPerPart = 2
             , partsPerPie = 4
             }
-      , users = []
-      , preferences = []
+      , userPrefs = Dict.empty
       }
     , Cmd.none
     )
@@ -95,8 +123,30 @@ subscriptions model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Msg ->
-            ( model, Cmd.none )
+        Add user topping ->
+            ( { model | userPrefs = model.userPrefs |> Dict.update ( user, topping ) (modifyIntKey 1) }, Cmd.none )
+
+        Remove user topping ->
+            ( { model | userPrefs = model.userPrefs |> Dict.update ( user, topping ) (modifyIntKey -1) }, Cmd.none )
+
+
+modifyIntKey : Int -> Maybe Int -> Maybe Int
+modifyIntKey delta prev =
+    case ( prev, delta > 0 ) of
+        ( Nothing, True ) ->
+            Just delta
+
+        ( Nothing, False ) ->
+            Nothing
+
+        ( Just val, False ) ->
+            if val + delta <= 0 then
+                Nothing
+            else
+                Just (val + delta)
+
+        ( Just val, True ) ->
+            Just (val + delta)
 
 
 
@@ -105,9 +155,48 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    thing model.config model.preferences
-        |> List.map (\toppings -> div [] [ text <| toString toppings ])
-        |> div []
+    div []
+        [ h1 [] [ text "Users" ]
+        , users |> List.map (userView Remove Add toppings model.userPrefs) |> div []
+        , h1 [] [ text "Choices" ]
+        , thing model.config model.userPrefs
+            |> List.map (\toppings -> div [] [ text <| toString toppings ])
+            |> div []
+        ]
+
+
+toppings : List Topping
+toppings =
+    [ "Olives", "Onion", "Tomato", "Pineapple", "Extra Cheese", "Corn", "Tuna" ]
+
+
+users : List User
+users =
+    [ "Dan", "Sivan" ]
+
+
+userView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> UserPreferences -> User -> Html msg
+userView decrease increase toppings prefs user =
+    let
+        counter value topping =
+            toppingCounter
+                (decrease user topping)
+                (increase user topping)
+                topping
+                (Dict.get ( user, topping ) prefs |> Maybe.withDefault 0)
+    in
+        div []
+            [ h2 [] [ text user ]
+            , toppings |> List.map (counter 0) |> div []
+            ]
+
+
+toppingCounter : msg -> msg -> Topping -> Int -> Html msg
+toppingCounter decrease increase topping value =
+    div []
+        [ text topping
+        , counter value decrease increase
+        ]
 
 
 
@@ -122,6 +211,23 @@ main =
         , update = update
         , view = view
         }
+
+
+
+-- REMOVE SINGLE
+
+
+removeSingle : a -> List a -> List a
+removeSingle x xs =
+    case xs of
+        [] ->
+            []
+
+        hd :: tl ->
+            if hd == x then
+                tl
+            else
+                hd :: removeSingle x tl
 
 
 
@@ -179,7 +285,7 @@ tally toKey toVal xs =
                     toKey hd
 
                 ( heads, others ) =
-                    List.partition (toKey >> (==) headKey) tl
+                    List.partition (\item -> toKey item == headKey) tl
             in
                 ( headKey, hd :: heads |> List.map toVal ) :: tally toKey toVal others
 
@@ -196,7 +302,7 @@ tallyHelper toKey toVal xs partial =
                     toKey hd
 
                 ( heads, others ) =
-                    List.partition (toKey >> (==) headKey) tl
+                    List.partition (\item -> toKey item == headKey) tl
             in
                 tallyHelper toKey toVal others (( headKey, hd :: heads |> List.map toVal ) :: partial)
 
