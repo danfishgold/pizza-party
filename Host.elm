@@ -54,18 +54,13 @@ view : Model -> Html Msg
 view model =
     div []
         [ h1 [] [ text "Users" ]
-        , users |> List.map (userView Remove Add toppings model.userPrefs) |> div []
+        , users |> List.map (userView Remove Add Topping.all model.userPrefs) |> div []
         , h1 [] [ text "Changes" ]
         , Pref.options model.config
             model.userPrefs
             |> List.map (\toppings -> div [] [ text <| toString toppings ])
             |> div []
         ]
-
-
-toppings : List Topping
-toppings =
-    [ "Olives", "Onion", "Tomato", "Pineapple", "Extra Cheese", "Corn", "Tuna" ] |> List.map Topping
 
 
 users : List User

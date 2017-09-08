@@ -1,4 +1,4 @@
-module Topping exposing (Topping, Key, key)
+module Topping exposing (Topping, Key, key, all)
 
 
 type alias Topping =
@@ -12,3 +12,19 @@ type alias Key =
 key : Topping -> Key
 key { name } =
     name
+
+
+all : List Topping
+all =
+    [ "Green Olives"
+    , "Black Olives"
+    , "Mushrooms"
+    , "Onion"
+    , "Corn"
+    , "Tomato"
+    , "Pineapple"
+    , "Peperoni"
+    , "Extra Cheese"
+    , "Tuna"
+    ]
+        |> List.map Topping
