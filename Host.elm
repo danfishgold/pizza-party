@@ -100,6 +100,45 @@ main =
 
 
 
+-- PRODUCT
+
+
+product : List ( key, List val ) -> List (List ( key, val ))
+product options =
+    case options of
+        [] ->
+            [ [] ]
+
+        hd :: tl ->
+            productCore hd (product tl)
+
+
+productHelper : List ( key, List val ) -> List (List ( key, val )) -> List (List ( key, val ))
+productHelper options partial =
+    case options of
+        [] ->
+            List.map List.reverse partial
+
+        hd :: tl ->
+            productHelper tl (productCore hd partial)
+
+
+productReduce : List ( key, List val ) -> List (List ( key, val ))
+productReduce options =
+    List.foldr productCore [ [] ] options
+
+
+productCore : ( key, List val ) -> List (List ( key, val )) -> List (List ( key, val ))
+productCore ( key, vals ) partial =
+    let
+        addToBeginning : val -> List ( key, val ) -> List ( key, val )
+        addToBeginning val xs =
+            ( key, val ) :: xs
+    in
+        List.concatMap (\val -> List.map (addToBeginning val) partial) vals
+
+
+
 -- TALLY
 
 
