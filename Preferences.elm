@@ -69,6 +69,7 @@ options { slicesPerPart, partsPerPie } preferences =
             |> Dict.map (always (nearestWholes slicesPerPart))
             |> dictProduct
             |> List.filter (ToppingCount.validPieCount (slicesPerPart * partsPerPie))
+            |> List.filter (ToppingCount.sliceCount >> (/=) 0)
             |> List.map (\opt -> ToppingCount.subtract opt toppingCount)
             |> List.sortBy ToppingCount.sliceCount
 
