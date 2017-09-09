@@ -1,6 +1,7 @@
 module Host exposing (..)
 
 import Html exposing (Html, program, div, h1, h2, span, text)
+import Html.Attributes exposing (style)
 import Config exposing (Config)
 import Guest exposing (userView)
 import Preferences as Pref exposing (Preferences)
@@ -15,8 +16,8 @@ type alias Model =
 
 
 type Msg
-    = Add User Topping
-    | Remove User Topping
+    = AddSlice User Topping
+    | RemoveSlice User Topping
 
 
 init : ( Model, Cmd Msg )
@@ -39,10 +40,10 @@ subscriptions model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Add user topping ->
+        AddSlice user topping ->
             ( { model | userPrefs = model.userPrefs |> Pref.add user topping 1 }, Cmd.none )
 
-        Remove user topping ->
+        RemoveSlice user topping ->
             ( { model | userPrefs = model.userPrefs |> Pref.add user topping -1 }, Cmd.none )
 
 
@@ -53,8 +54,7 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ h1 [] [ text "Users" ]
-        , users |> List.map (userView Remove Add Topping.all model.userPrefs) |> div []
+        [ usersView RemoveSlice AddSlice Topping.all model.userPrefs users
         , h1 [] [ text "Changes" ]
         , Pref.options model.config
             model.userPrefs
@@ -65,7 +65,33 @@ view model =
 
 users : List User
 users =
-    [ "Dan", "Sivan" ] |> List.map User
+    [ "Dan", "Sivan", "Ella", "Daniel", "Gali" ] |> List.map User
+
+
+usersView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> Preferences -> List User -> Html msg
+usersView decrease increase toppings prefs users =
+    let
+        userDiv user =
+            div
+                [ style
+                    [ ( "grid-row-start", "1" )
+                    , ( "grid-row-end", "2" )
+                    ]
+                ]
+                [ userView decrease increase toppings prefs user ]
+    in
+        div []
+            [ h1 [] [ text "Users" ]
+            , users
+                |> List.map userDiv
+                |> div
+                    [ style
+                        [ ( "display", "grid" )
+                        , ( "grid-auto-columns", "1fr" )
+                        , ( "grid-auto-rows", "auto" )
+                        ]
+                    ]
+            ]
 
 
 userView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> Preferences -> User -> Html msg
