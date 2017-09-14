@@ -27,7 +27,7 @@ pie radius slicesPerPie toppingCount =
     in
         toppingCount
             |> Dict.toList
-            |> List.sortBy (Tuple.second)
+            |> List.sortBy (negate << Tuple.second)
             |> List.foldl placeInPie ( [], 0 )
             |> Tuple.first
             |> List.map sliceGroupView
