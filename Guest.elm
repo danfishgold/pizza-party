@@ -1,7 +1,7 @@
 module Guest exposing (..)
 
-import Html exposing (Html, program, div, button, text)
-import Html.Attributes exposing (disabled)
+import Html exposing (Html, program, div, button, text, span)
+import Html.Attributes exposing (disabled, style)
 import Html.Events exposing (onClick)
 import Topping exposing (Topping)
 import User exposing (User)
@@ -59,20 +59,35 @@ userView decrease increase value toppings prefs =
 
 toppingCounter : msg -> msg -> Int -> Topping -> Html msg
 toppingCounter decrease increase value topping =
-    div []
-        [ text topping.name
-        , div []
-            [ button
-                [ if value == 0 then
-                    disabled True
-                  else
-                    onClick <| decrease
+    let
+        color =
+            case value of
+                0 ->
+                    "lightgray"
+
+                1 ->
+                    "yellow"
+
+                2 ->
+                    "orange"
+
+                _ ->
+                    "darkorange"
+    in
+        div [ style [ ( "float", "left" ), ( "background-color", color ), ( "padding", "5px" ), ( "margin", "10px" ) ] ]
+            [ span [ style [ ( "font-weight", "bold" ) ] ] [ text topping.name ]
+            , div []
+                [ button
+                    [ if value == 0 then
+                        disabled True
+                      else
+                        onClick <| decrease
+                    ]
+                    [ text "-" ]
+                , text <| toString value
+                , button [ onClick <| increase ] [ text "+" ]
                 ]
-                [ text "-" ]
-            , text <| toString value
-            , button [ onClick <| increase ] [ text "+" ]
             ]
-        ]
 
 
 
