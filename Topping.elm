@@ -1,4 +1,4 @@
-module Topping exposing (Topping, Key, key, all)
+module Topping exposing (Topping, Key, key, fromKey, all)
 
 
 type alias Topping =
@@ -12,6 +12,11 @@ type alias Key =
 key : Topping -> Key
 key { name } =
     name
+
+
+fromKey : Key -> Topping
+fromKey name =
+    { name = name }
 
 
 all : List Topping

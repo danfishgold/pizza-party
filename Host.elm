@@ -8,6 +8,7 @@ import Preferences as Pref exposing (Preferences)
 import ToppingCount
 import User exposing (User)
 import Topping exposing (Topping)
+import PizzaView
 
 
 type alias Model =
@@ -55,7 +56,8 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ usersView RemoveSlice AddSlice Topping.all model.userPrefs users
+        [ PizzaView.pie 100 (model.config.slicesPerPart * model.config.partsPerPie) (Pref.toToppingCount model.userPrefs)
+        , usersView RemoveSlice AddSlice Topping.all model.userPrefs users
         , h1 [] [ text "Changes" ]
         , Pref.toToppingCount model.userPrefs
             |> ToppingCount.stableOptions model.config
