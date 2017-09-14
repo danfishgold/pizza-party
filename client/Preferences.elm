@@ -14,37 +14,61 @@ type Preferences
 
 decoder : Decoder Preferences
 decoder =
-    Decode.map3 (\user topping count -> ( ( user, topping ), count ))
-        (Decode.field "user" User.decoder |> Decode.map User.key)
-        (Decode.field "topping" Topping.decoder |> Decode.map Topping.key)
-        (Decode.field "count" Decode.int)
+    decodeTriplet
         |> Decode.list
-        |> Decode.map (Dict.fromList)
-        |> Decode.map Preferences
+        |> Decode.map fromList
+
+
+decodeTriplet : Decoder ( User, Topping, Int )
+decodeTriplet =
+    Decode.map3 (,,)
+        (Decode.field "user" User.decoder)
+        (Decode.field "topping" Topping.decoder)
+        (Decode.field "count" Decode.int)
 
 
 encode : Preferences -> Encode.Value
-encode (Preferences prefs) =
-    let
-        encodePair ( ( userKey, toppingKey ), count ) =
-            case ( User.fromKey userKey, Topping.fromKey toppingKey ) of
-                ( Just user, Just topping ) ->
-                    Encode.object
-                        [ ( "user", User.encode user )
-                        , ( "topping", Topping.encode user )
-                        , ( "count", Encode.int count )
-                        ]
-                        |> Just
+encode preferences =
+    preferences |> toList |> List.map encodeTriplet |> Encode.list
 
-                _ ->
-                    Nothing
-    in
-        prefs |> Dict.toList |> List.filterMap encodePair |> Encode.list
+
+encodeTriplet : ( User, Topping, Int ) -> Encode.Value
+encodeTriplet ( user, topping, count ) =
+    Encode.object
+        [ ( "user", User.encode user )
+        , ( "topping", Topping.encode topping )
+        , ( "count", Encode.int count )
+        ]
 
 
 empty : Preferences
 empty =
     Preferences Dict.empty
+
+
+fromList : List ( User, Topping, Int ) -> Preferences
+fromList =
+    List.map (\( user, topping, count ) -> ( ( User.key user, Topping.key topping ), count ))
+        >> Dict.fromList
+        >> Preferences
+
+
+toList : Preferences -> List ( User, Topping, Int )
+toList =
+    let
+        parsePair ( ( userKey, toppingKey ), count ) =
+            Maybe.map2 (\user topping -> ( user, topping, count ))
+                (User.fromKey userKey)
+                (Topping.fromKey toppingKey)
+    in
+        toDict
+            >> Dict.toList
+            >> List.filterMap parsePair
+
+
+toDict : Preferences -> Dict ( User.Key, Topping.Key ) Int
+toDict (Preferences prefs) =
+    prefs
 
 
 key : User -> Topping -> ( User.Key, Topping.Key )
