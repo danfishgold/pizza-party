@@ -5,6 +5,7 @@ import Html.Attributes exposing (style)
 import Config exposing (Config)
 import Guest exposing (userView)
 import Preferences as Pref exposing (Preferences)
+import ToppingCount
 import User exposing (User)
 import Topping exposing (Topping)
 
@@ -56,8 +57,8 @@ view model =
     div []
         [ usersView RemoveSlice AddSlice Topping.all model.userPrefs users
         , h1 [] [ text "Changes" ]
-        , Pref.options model.config
-            model.userPrefs
+        , Pref.toToppingCount model.userPrefs
+            |> ToppingCount.stableOptions model.config
             |> List.map (\toppings -> div [] [ text <| toString toppings ])
             |> div []
         ]
