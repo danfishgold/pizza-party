@@ -1,2 +1,4 @@
-elm-stuff
-elm.js
+client/elm-stuff
+client/elm.js
+client/socket.io/socket.io.js
+server/node_modules

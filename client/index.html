@@ -4,8 +4,29 @@
 </head>
 <body>
   <div></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
   <script src="elm.js"></script>
   <script>
+
     var app = Elm.Host.fullscreen()
+
+    var socket = io.connect('http://localhost:5000')
+
+    socket.on('request-all-topping-counts', function (data) {
+      app.ports.requestAllToppingCounts.send(data)
+    })
+
+    socket.on('topping-triplet', data => {
+      app.ports.receiveToppingTriplet.send(data)
+    })
+
+    app.ports.sendToppingTriplet.subscribe(data => {
+      socket.emit('topping-triplet', data)
+    })
+
+    app.ports.sendAllToppingCounts.subscribe(data => {
+      socket.emit('send-all-topping-counts', data)
+    })
+
   </script>
 </body>

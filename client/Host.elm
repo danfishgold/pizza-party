@@ -1,4 +1,4 @@
-module Host exposing (..)
+port module Host exposing (..)
 
 import Html exposing (Html, program, div, h1, h2, span, text)
 import Html.Attributes exposing (style)
@@ -9,6 +9,8 @@ import ToppingCount
 import User exposing (User)
 import Topping exposing (Topping)
 import PizzaView
+import Json.Encode exposing (Value)
+import Json.Decode
 
 
 type alias Model =
@@ -18,8 +20,10 @@ type alias Model =
 
 
 type Msg
-    = AddSlice User Topping
-    | RemoveSlice User Topping
+    = AddSliceCount Int User Topping
+    | SetSliceCount Int User Topping
+    | SendPreferences User
+    | Noop
 
 
 init : ( Model, Cmd Msg )
@@ -34,19 +38,63 @@ init =
     )
 
 
+port sendToppingTriplet : Value -> Cmd msg
+
+
+port receiveToppingTriplet : (Value -> msg) -> Sub msg
+
+
+port sendAllToppingCounts : Value -> Cmd msg
+
+
+port requestAllToppingCounts : (Value -> msg) -> Sub msg
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Sub.batch
+        [ requestAllToppingCounts
+            (Json.Decode.decodeValue User.decoder
+                >> Result.mapError (Debug.log "error on all topping counts")
+                >> Result.toMaybe
+                >> Maybe.map SendPreferences
+                >> Maybe.withDefault Noop
+            )
+        , receiveToppingTriplet
+            (Json.Decode.decodeValue Pref.decodeTriplet
+                >> Result.mapError (Debug.log "error on topping triplet")
+                >> Result.toMaybe
+                >> Maybe.map (\( user, topping, count ) -> SetSliceCount count user topping)
+                >> Maybe.withDefault Noop
+            )
+        ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        AddSlice user topping ->
-            ( { model | userPrefs = model.userPrefs |> Pref.add user topping 1 }, Cmd.none )
+        AddSliceCount delta user topping ->
+            let
+                ( newPrefs, newValue ) =
+                    model.userPrefs |> Pref.add user topping delta
 
-        RemoveSlice user topping ->
-            ( { model | userPrefs = model.userPrefs |> Pref.add user topping -1 }, Cmd.none )
+                data =
+                    Pref.encodeTriplet ( user, topping, newValue |> Maybe.withDefault 0 )
+            in
+                ( { model | userPrefs = newPrefs }, sendToppingTriplet data )
+
+        SetSliceCount count user topping ->
+            let
+                newPrefs =
+                    model.userPrefs |> Pref.set user topping count
+            in
+                ( { model | userPrefs = newPrefs }, Cmd.none )
+
+        SendPreferences user ->
+            ( model, sendAllToppingCounts (Pref.encode model.userPrefs) )
+
+        Noop ->
+            ( model, Cmd.none )
 
 
 
@@ -57,7 +105,7 @@ view : Model -> Html Msg
 view model =
     div []
         [ PizzaView.pie 100 (model.config.slicesPerPart * model.config.partsPerPie) (Pref.toToppingCount model.userPrefs)
-        , usersView RemoveSlice AddSlice Topping.all model.userPrefs users
+        , usersView (AddSliceCount -1) (AddSliceCount 1) Topping.all model.userPrefs users
         , h1 [] [ text "Changes" ]
         , Pref.toToppingCount model.userPrefs
             |> ToppingCount.stableOptions model.config
