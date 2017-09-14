@@ -81,27 +81,28 @@ get user topping (Preferences prefs) =
     Dict.get (key user topping) prefs
 
 
-add : User -> Topping -> Int -> Preferences -> Preferences
-add user topping delta (Preferences prefs) =
-    let
-        k =
-            key user topping
-    in
-        case ( Dict.get k prefs, delta > 0 ) of
-            ( Nothing, True ) ->
-                Dict.insert k delta prefs |> Preferences
+set : User -> Topping -> Int -> Preferences -> Preferences
+set user topping value (Preferences prefs) =
+    Dict.insert (key user topping) value prefs |> Preferences
 
-            ( Nothing, False ) ->
-                Preferences prefs
 
-            ( Just val, False ) ->
-                if val + delta < 0 then
-                    Preferences prefs
-                else
-                    Dict.insert k (val + delta) prefs |> Preferences
+add : User -> Topping -> Int -> Preferences -> ( Preferences, Maybe Int )
+add user topping delta preferences =
+    case ( get user topping preferences, delta > 0 ) of
+        ( Nothing, True ) ->
+            ( set user topping delta preferences, Just delta )
 
-            ( Just val, True ) ->
-                Dict.insert k (val + delta) prefs |> Preferences
+        ( Nothing, False ) ->
+            ( preferences, Nothing )
+
+        ( Just val, False ) ->
+            if val + delta < 0 then
+                ( preferences, Just val )
+            else
+                ( set user topping (val + delta) preferences, Just (val + delta) )
+
+        ( Just val, True ) ->
+            ( set user topping (val + delta) preferences, Just (val + delta) )
 
 
 toToppingCount : Preferences -> ToppingCount
