@@ -4,11 +4,42 @@ import Dict exposing (Dict)
 import User exposing (User)
 import Topping exposing (Topping)
 import ToppingCount exposing (ToppingCount)
-import Config exposing (Config)
+import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 
 
 type Preferences
     = Preferences (Dict ( User.Key, Topping.Key ) Int)
+
+
+decoder : Decoder Preferences
+decoder =
+    Decode.map3 (\user topping count -> ( ( user, topping ), count ))
+        (Decode.field "user" User.decoder |> Decode.map User.key)
+        (Decode.field "topping" Topping.decoder |> Decode.map Topping.key)
+        (Decode.field "count" Decode.int)
+        |> Decode.list
+        |> Decode.map (Dict.fromList)
+        |> Decode.map Preferences
+
+
+encode : Preferences -> Encode.Value
+encode (Preferences prefs) =
+    let
+        encodePair ( ( userKey, toppingKey ), count ) =
+            case ( User.fromKey userKey, Topping.fromKey toppingKey ) of
+                ( Just user, Just topping ) ->
+                    Encode.object
+                        [ ( "user", User.encode user )
+                        , ( "topping", Topping.encode user )
+                        , ( "count", Encode.int count )
+                        ]
+                        |> Just
+
+                _ ->
+                    Nothing
+    in
+        prefs |> Dict.toList |> List.filterMap encodePair |> Encode.list
 
 
 empty : Preferences

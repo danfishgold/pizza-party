@@ -13,9 +13,14 @@ pie : Float -> Int -> ToppingCount -> Svg msg
 pie radius slicesPerPie toppingCount =
     let
         placeInPie ( toppingKey, count ) ( prevs, totalSliceCount ) =
-            ( prevs ++ [ ( Topping.fromKey toppingKey, totalSliceCount + 1, count ) ]
-            , totalSliceCount + count
-            )
+            case Topping.fromKey toppingKey of
+                Just topping ->
+                    ( prevs ++ [ ( topping, totalSliceCount + 1, count ) ]
+                    , totalSliceCount + count
+                    )
+
+                Nothing ->
+                    ( prevs, totalSliceCount )
 
         sliceGroupView ( topping, start, count ) =
             slices radius slicesPerPie start count topping
