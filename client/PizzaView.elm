@@ -1,7 +1,7 @@
 module PizzaView exposing (..)
 
-import Svg exposing (Svg, svg, path, g)
-import Svg.Attributes exposing (width, height, d, transform, stroke, fill)
+import Svg exposing (Svg, svg, g, path, text_, text)
+import Svg.Attributes exposing (width, height, d, transform, stroke, fill, x, y, textAnchor)
 import Topping exposing (Topping)
 import Dict exposing (Dict)
 import Color exposing (Color)
@@ -52,8 +52,9 @@ slices radius slicesPerPie slicesStart sliceCount topping =
                 degrees 360 * toFloat (slicesStart - 1 + sliceCount) / toFloat slicesPerPie
         in
             g []
-                [ arc radius startAngle endAngle Color.yellow
-                , arc (radius * 0.9) startAngle endAngle Color.red
+                [ arc radius startAngle endAngle Color.white
+                  -- , arc (radius * 0.9) startAngle endAngle Color.white
+                , arcTitle radius startAngle endAngle topping.name Color.black
                 ]
 
 
@@ -90,6 +91,42 @@ arc r startAngle endAngle color =
             , fill <| colorToCssRgb color
             ]
             []
+
+
+arcTitle : Float -> Float -> Float -> String -> Color -> Svg msg
+arcTitle r startAngle endAngle title color =
+    let
+        center =
+            arcCenter r startAngle endAngle
+    in
+        text_
+            [ x <| toString center.x
+            , y <| toString center.y
+            , textAnchor "middle"
+            , fill <| colorToCssRgb color
+            ]
+            [ text title ]
+
+
+arcCenter : Float -> Float -> Float -> { x : Float, y : Float }
+arcCenter r startAngle endAngle =
+    if endAngle <= startAngle then
+        arcCenter r startAngle (endAngle + 2 * pi)
+    else
+        let
+            alpha =
+                endAngle - startAngle
+
+            rad =
+                if alpha == 2 * pi then
+                    0
+                else
+                    2 * r / 3 * (1 - alpha / (8 * pi))
+
+            theta =
+                startAngle + alpha / 2
+        in
+            polarToCartesian rad theta
 
 
 pathCommand : String -> List Float -> String
