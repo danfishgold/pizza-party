@@ -31,11 +31,11 @@ pie radius slicesPerPie toppingCount =
             |> List.foldl placeInPie ( [], 0 )
             |> Tuple.first
             |> List.map sliceGroupView
-            |> g [ transform <| "translate(" ++ toString radius ++ "," ++ toString radius ++ ")" ]
+            |> g [ transform <| "translate(" ++ toString (radius + 1) ++ "," ++ toString (radius + 1) ++ ")" ]
             |> List.singleton
             |> svg
-                [ width <| toString <| radius * 2
-                , height <| toString <| radius * 2
+                [ width <| toString <| radius * 2 + 2
+                , height <| toString <| radius * 2 + 2
                 ]
 
 
