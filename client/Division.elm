@@ -1,4 +1,4 @@
-module Division exposing (..)
+module Division exposing (Division, makePies)
 
 import ToppingCount exposing (ToppingCount, Pair)
 import Topping exposing (Topping)
