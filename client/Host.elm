@@ -123,25 +123,14 @@ usersView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping
 usersView decrease increase toppings prefs users =
     let
         userDiv user =
-            div
-                [ style
-                    [ ( "grid-row-start", "1" )
-                    , ( "grid-row-end", "2" )
-                    ]
-                ]
-                [ userView decrease increase toppings prefs user ]
+            userView decrease increase toppings prefs user
     in
         div []
             [ h1 [] [ text "Users" ]
             , users
                 |> List.map userDiv
                 |> div
-                    [ style
-                        [ ( "display", "grid" )
-                        , ( "grid-auto-columns", "1fr" )
-                        , ( "grid-auto-rows", "auto" )
-                        ]
-                    ]
+                    []
             ]
 
 

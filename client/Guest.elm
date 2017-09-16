@@ -74,7 +74,14 @@ toppingCounter decrease increase value topping =
                 _ ->
                     "darkorange"
     in
-        div [ style [ ( "float", "left" ), ( "background-color", color ), ( "padding", "5px" ), ( "margin", "10px" ) ] ]
+        div
+            [ style
+                [ ( "display", "inline-block" )
+                , ( "background-color", color )
+                , ( "padding", "5px" )
+                , ( "margin", "10px" )
+                ]
+            ]
             [ span [ style [ ( "font-weight", "bold" ) ] ] [ text topping.name ]
             , div []
                 [ button
