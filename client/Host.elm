@@ -9,8 +9,7 @@ import ToppingCount
 import User exposing (User)
 import Topping exposing (Topping)
 import PizzaView
-import Json.Encode exposing (Value)
-import Json.Decode
+import Socket
 
 
 type alias Model =
@@ -26,18 +25,6 @@ type Msg
     | Noop
 
 
-
-
-port sendToppingTriplet : Value -> Cmd msg
-
-
-port receiveToppingTriplet : (Value -> msg) -> Sub msg
-
-
-port sendAllToppingCounts : Value -> Cmd msg
-
-
-port requestAllToppingCounts : (Value -> msg) -> Sub msg
 initialModel : Model
 initialModel =
     { config =
@@ -51,18 +38,12 @@ initialModel =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ requestAllToppingCounts
-            (Json.Decode.decodeValue User.decoder
-                >> Result.mapError (Debug.log "error on all topping counts")
-                >> Result.toMaybe
-                >> Maybe.map SendPreferences
+        [ Socket.requestsForAllCounts
+            (Maybe.map SendPreferences
                 >> Maybe.withDefault Noop
             )
-        , receiveToppingTriplet
-            (Json.Decode.decodeValue Pref.decodeTriplet
-                >> Result.mapError (Debug.log "error on topping triplet")
-                >> Result.toMaybe
-                >> Maybe.map (\( user, topping, count ) -> SetSliceCount count user topping)
+        , Socket.toppingCountUpdates
+            (Maybe.map (\( user, topping, count ) -> SetSliceCount count user topping)
                 >> Maybe.withDefault Noop
             )
         ]
@@ -75,11 +56,12 @@ update msg model =
             let
                 ( newPrefs, newValue ) =
                     model.userPrefs |> Pref.add user topping delta
-
-                data =
-                    Pref.encodeTriplet ( user, topping, newValue |> Maybe.withDefault 0 )
             in
-                ( { model | userPrefs = newPrefs }, sendToppingTriplet data )
+                ( { model | userPrefs = newPrefs }
+                , Socket.updateToppingCount user
+                    topping
+                    (newValue |> Maybe.withDefault 0)
+                )
 
         SetSliceCount count user topping ->
             let
@@ -89,7 +71,7 @@ update msg model =
                 ( { model | userPrefs = newPrefs }, Cmd.none )
 
         SendPreferences user ->
-            ( model, sendAllToppingCounts (Pref.encode model.userPrefs) )
+            ( model, Socket.sendAllCounts model.userPrefs )
 
         Noop ->
             ( model, Cmd.none )
