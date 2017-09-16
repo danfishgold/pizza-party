@@ -26,16 +26,6 @@ type Msg
     | Noop
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( { config =
-            { slicesPerPart = 2
-            , partsPerPie = 4
-            }
-      , userPrefs = Pref.empty
-      }
-    , Cmd.none
-    )
 
 
 port sendToppingTriplet : Value -> Cmd msg
@@ -48,6 +38,14 @@ port sendAllToppingCounts : Value -> Cmd msg
 
 
 port requestAllToppingCounts : (Value -> msg) -> Sub msg
+initialModel : Model
+initialModel =
+    { config =
+        { slicesPerPart = 2
+        , partsPerPie = 4
+        }
+    , userPrefs = Pref.empty
+    }
 
 
 subscriptions : Model -> Sub Msg
@@ -155,7 +153,7 @@ userView decrease increase toppings prefs user =
 main : Program Never Model Msg
 main =
     program
-        { init = init
+        { init = ( initialModel, Cmd.none )
         , subscriptions = subscriptions
         , update = update
         , view = view
