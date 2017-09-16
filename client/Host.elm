@@ -135,7 +135,7 @@ userView decrease increase toppings prefs user =
 main : Program Never Model Msg
 main =
     program
-        { init = ( initialModel, Cmd.none )
+        { init = ( initialModel, Socket.connectAsHost True )
         , subscriptions = subscriptions
         , update = update
         , view = view

@@ -8,25 +8,35 @@
   <script src="elm.js"></script>
   <script>
 
-    var app = Elm.Host.fullscreen()
+    var app = Elm.Main.fullscreen()
 
-    var socket = io.connect('http://localhost:5000')
+    app.ports.connectAsHost.subscribe(isHost => {
 
-    socket.on('request-all-topping-counts', function (data) {
-      app.ports.receiveRequestForAllToppingCounts.send(data)
+      var socket = io.connect('http://localhost:5000')
+    
+      if (isHost) {
+
+        socket.on('request-all-topping-counts', function (data) {
+          app.ports.receiveRequestForAllToppingCounts.send(data)
+        })
+
+        app.ports.sendAllToppingCounts.subscribe(data => {
+          socket.emit('send-all-topping-counts', data)
+        })
+      }
+
+      socket.on('topping-triplet', data => {
+        app.ports.receiveToppingTriplet.send(data)
+      })
+
+      app.ports.sendToppingTriplet.subscribe(data => {
+        socket.emit('topping-triplet', data)
+      })
+
+      
     })
 
-    socket.on('topping-triplet', data => {
-      app.ports.receiveToppingTriplet.send(data)
-    })
-
-    app.ports.sendToppingTriplet.subscribe(data => {
-      socket.emit('topping-triplet', data)
-    })
-
-    app.ports.sendAllToppingCounts.subscribe(data => {
-      socket.emit('send-all-topping-counts', data)
-    })
+    
 
   </script>
 </body>

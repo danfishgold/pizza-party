@@ -1,6 +1,8 @@
 port module Socket
     exposing
-        ( requestsForAllCounts
+        ( State(..)
+        , connectAsHost
+        , requestsForAllCounts
         , toppingCountUpdates
         , updateToppingCount
         , sendAllCounts
@@ -11,6 +13,16 @@ import Json.Decode
 import Preferences exposing (Preferences)
 import User exposing (User)
 import Topping exposing (Topping)
+
+
+type State a
+    = NotRequested
+    | Joining
+    | Joined a
+    | Denied String
+
+
+port connectAsHost : Bool -> Cmd msg
 
 
 port sendToppingTriplet : Value -> Cmd msg
