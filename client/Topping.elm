@@ -34,7 +34,8 @@ fromKey key =
 
 all : List Topping
 all =
-    [ "Green Olives"
+    [ "Plain"
+    , "Green Olives"
     , "Black Olives"
     , "Mushrooms"
     , "Onion"
