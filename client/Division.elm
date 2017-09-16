@@ -25,6 +25,15 @@ map remainingParser { pies, remaining, leftovers } =
         }
 
 
+{-|
+First, if there's a pair with more than slicesPerPie slices,
+make a pie with just that topping.
+
+Then, put aside the slices which are less than slicesPerPart,
+because those can't fill pies anyway.
+
+Then the main part happens. More on that in attemptToFill.
+-}
 makePies : Config -> ToppingCount -> Division
 makePies config toppingCount =
     { remaining = toppingCount |> ToppingCount.toList
@@ -117,6 +126,26 @@ maybeFill config counts =
                 Division pies (List.concat rest) []
 
 
+{-|
+This is the main part. It's a recursive function whose job is to fill pies.
+
+It can return a list of pies, or Nothing.
+The end condition is an empty `countsSortedBigToSmall`, meaning there are no
+more pairs to organize.
+When this happens, there are two options:
+1. All pies except for at most one are full = success
+2. There's more than one partial pie = failure
+
+The recursion step has multiple options and when one results in a failure,
+it moves to the next option.
+Take the largest unorganized pair.
+1. If it can fit inside an existing partial pie, put it there. Otherwise,
+2. Start a new pie with that pair. If this fails,
+3. Split the pair into two and try again.
+
+I didn't check whether this algorithm always succeeds, but that's what fuzz tests
+are for :D.
+-}
 attemptToFill : Config -> List Pair -> List (List Pair) -> Maybe (List (List Pair))
 attemptToFill config countsSortedBigToSmall semipies =
     let
