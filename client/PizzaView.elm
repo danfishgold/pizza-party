@@ -7,26 +7,50 @@ import Dict exposing (Dict)
 import Color exposing (Color)
 import Color.Convert exposing (colorToCssRgb)
 import ToppingCount exposing (ToppingCount)
+import Config exposing (Config)
+import Division
 
 
-pie : Float -> Int -> ToppingCount -> Svg msg
+pies : Float -> Config -> ToppingCount -> List (Svg msg)
+pies radius config toppingCount =
+    let
+        slicesPerPie =
+            config.slicesPerPart * config.partsPerPie
+
+        separated =
+            Division.makePies config toppingCount
+
+        remainder =
+            Division.makePies
+                { slicesPerPart = 1
+                , partsPerPie = slicesPerPie
+                }
+                (separated.remaining ++ separated.leftovers |> ToppingCount.fromList)
+
+        remainderLeftovers =
+            Debug.log "remainder leftovers" remainder.leftovers
+
+        remainderRemaining =
+            Debug.log "remainder remaining" remainder.remaining
+    in
+        separated.pies
+            ++ remainder.pies
+            ++ [ remainder.remaining ]
+            |> List.map (pie radius slicesPerPie)
+
+
+pie : Float -> Int -> List ToppingCount.Pair -> Svg msg
 pie radius slicesPerPie toppingCount =
     let
-        placeInPie ( toppingKey, count ) ( prevs, totalSliceCount ) =
-            case Topping.fromKey toppingKey of
-                Just topping ->
-                    ( prevs ++ [ ( topping, totalSliceCount + 1, count ) ]
-                    , totalSliceCount + count
-                    )
-
-                Nothing ->
-                    ( prevs, totalSliceCount )
+        placeInPie ( topping, count ) ( prevs, totalSliceCount ) =
+            ( prevs ++ [ ( topping, totalSliceCount + 1, count ) ]
+            , totalSliceCount + count
+            )
 
         sliceGroupView ( topping, start, count ) =
             slices radius slicesPerPie start count topping
     in
         toppingCount
-            |> Dict.toList
             |> List.sortBy (negate << Tuple.second)
             |> List.foldl placeInPie ( [], 0 )
             |> Tuple.first
@@ -36,6 +60,7 @@ pie radius slicesPerPie toppingCount =
             |> svg
                 [ width <| toString <| radius * 2 + 2
                 , height <| toString <| radius * 2 + 2
+                , Svg.Attributes.style "margin: 10px"
                 ]
 
 

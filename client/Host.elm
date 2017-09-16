@@ -104,7 +104,9 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ PizzaView.pie 100 (model.config.slicesPerPart * model.config.partsPerPie) (Pref.toToppingCount model.userPrefs)
+        [ Pref.toToppingCount model.userPrefs
+            |> PizzaView.pies 100 model.config
+            |> div []
         , usersView (AddSliceCount -1) (AddSliceCount 1) Topping.all model.userPrefs users
         , h1 [] [ text "Changes" ]
         , Pref.toToppingCount model.userPrefs
