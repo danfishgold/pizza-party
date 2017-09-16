@@ -9,6 +9,10 @@ type alias ToppingCount =
     Dict Topping.Key Int
 
 
+type alias Pair =
+    ( Topping, Int )
+
+
 stableOptions : Config -> ToppingCount -> List ToppingCount
 stableOptions { slicesPerPart, partsPerPie } toppingCount =
     toppingCount
@@ -62,6 +66,23 @@ validPieCount slicesPerPie toppingCount =
     sliceCount toppingCount % slicesPerPie == 0
 
 
+toList : ToppingCount -> List Pair
+toList =
+    let
+        parsePair ( toppingKey, count ) =
+            Maybe.map (flip (,) count)
+                (Topping.fromKey toppingKey)
+    in
+        Dict.toList
+            >> List.filterMap parsePair
+
+
+fromList : List Pair -> ToppingCount
+fromList =
+    tally (Tuple.first >> Topping.key) Tuple.second
+        >> Dict.map (always List.sum)
+
+
 
 -- DICT Product
 
@@ -74,3 +95,37 @@ dictProduct optionDict =
 dictProductCore : comparable -> List val -> List (Dict comparable val) -> List (Dict comparable val)
 dictProductCore key vals partial =
     List.concatMap (\val -> List.map (Dict.insert key val) partial) vals
+
+
+
+-- TALLY
+
+
+tally : (a -> comparable) -> (a -> value) -> List a -> Dict comparable (List value)
+tally toKey toVal xs =
+    tallyHelperDict toKey toVal xs Dict.empty
+
+
+tallyHelperDict : (a -> comparable) -> (a -> value) -> List a -> Dict comparable (List value) -> Dict comparable (List value)
+tallyHelperDict toKey toVal xs partial =
+    case xs of
+        [] ->
+            partial
+
+        hd :: tl ->
+            (tallyHelperDict toKey toVal tl)
+                (partial
+                    |> Dict.update (toKey hd) (Maybe.withDefault [] >> (::) (toVal hd) >> Just)
+                )
+
+
+tallyReduce : (a -> comparable) -> (a -> value) -> List a -> Dict comparable (List value)
+tallyReduce toKey toVal xs =
+    List.foldl
+        (\x ->
+            Dict.update
+                (toKey x)
+                (Maybe.withDefault [] >> (::) (toVal x) >> Just)
+        )
+        Dict.empty
+        xs

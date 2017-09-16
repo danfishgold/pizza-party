@@ -139,33 +139,3 @@ polarToCartesian r angle =
     { x = r * cos angle
     , y = r * sin angle
     }
-
-
-tally : (a -> comparable) -> (a -> value) -> List a -> Dict comparable (List value)
-tally toKey toVal xs =
-    tallyHelperDict toKey toVal xs Dict.empty
-
-
-tallyHelperDict : (a -> comparable) -> (a -> value) -> List a -> Dict comparable (List value) -> Dict comparable (List value)
-tallyHelperDict toKey toVal xs partial =
-    case xs of
-        [] ->
-            partial
-
-        hd :: tl ->
-            (tallyHelperDict toKey toVal tl)
-                (partial
-                    |> Dict.update (toKey hd) (Maybe.withDefault [] >> (::) (toVal hd) >> Just)
-                )
-
-
-tallyReduce : (a -> comparable) -> (a -> value) -> List a -> Dict comparable (List value)
-tallyReduce toKey toVal xs =
-    List.foldl
-        (\x ->
-            Dict.update
-                (toKey x)
-                (Maybe.withDefault [] >> (::) (toVal x) >> Just)
-        )
-        Dict.empty
-        xs
