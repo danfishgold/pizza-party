@@ -8,7 +8,7 @@ port module Socket
         , sliceTripletsFromGuest
         , requestToppingsListFromHost
         , toppingListRequestFromGuest
-        , sendToppingListToGuest
+        , sendToppingListOrErrorToGuest
         , toppingListFromHost
         )
 
@@ -127,7 +127,7 @@ port requestToppingList : Value -> Cmd msg
 port receiveToppingListRequest : (Value -> msg) -> Sub msg
 
 
-port sendToppingList : Value -> Cmd msg
+port sendToppingListOrError : Value -> Cmd msg
 
 
 port receiveToppingList : (Value -> msg) -> Sub msg
@@ -144,15 +144,31 @@ toppingListRequestFromGuest toMsg =
         (Decode.decodeValue User.decoder >> toMsg)
 
 
-sendToppingListToGuest : List Topping -> Cmd msg
-sendToppingListToGuest toppings =
-    sendToppingList (Encode.list (List.map Topping.encode toppings))
+sendToppingListOrErrorToGuest : Result String (List Topping) -> Cmd msg
+sendToppingListOrErrorToGuest result =
+    case result of
+        Ok toppings ->
+            toppings
+                |> List.map Topping.encode
+                |> Encode.list
+                |> \toppingList ->
+                    Encode.object [ ( "toppings", toppingList ) ]
+                        |> sendToppingListOrError
+
+        Err error ->
+            Encode.object [ ( "error", Encode.string error ) ]
+                |> sendToppingListOrError
 
 
 toppingListFromHost : (State (List Topping) -> msg) -> Sub msg
 toppingListFromHost toMsg =
     receiveToppingList
-        (Decode.decodeValue (Decode.list Topping.decoder)
+        (decodeResult
+            (Decode.oneOf
+                [ Decode.field "toppings" (Decode.list Topping.decoder) |> Decode.map Ok
+                , Decode.field "error" Decode.string |> Decode.map Err
+                ]
+            )
             >> stateFromResult
             >> toMsg
         )

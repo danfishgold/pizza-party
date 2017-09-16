@@ -22,7 +22,7 @@
     app.ports.requestToppingList.subscribe(data => {
       socket.emit('request-topping-list', data)
     })
-    app.ports.sendToppingList.subscribe(data => {
+    app.ports.sendToppingListOrError.subscribe(data => {
       socket.emit('topping-list', data)
     })
 

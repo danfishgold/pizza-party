@@ -86,9 +86,12 @@ update msg model =
                 ( { model | userPrefs = newPrefs }, Cmd.none )
 
         SendToppingList user ->
-            ( { model | users = user :: model.users }
-            , Socket.sendToppingListToGuest model.toppings
-            )
+            if List.member user model.users then
+                ( model, Socket.sendToppingListOrErrorToGuest (Err "Name already exists") )
+            else
+                ( { model | users = user :: model.users }
+                , Socket.sendToppingListOrErrorToGuest (Ok model.toppings)
+                )
 
         SetSocketState state ->
             let
