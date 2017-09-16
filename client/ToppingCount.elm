@@ -83,6 +83,40 @@ fromList =
         >> Dict.map (always List.sum)
 
 
+empty : ToppingCount
+empty =
+    Dict.empty
+
+
+get : Topping -> ToppingCount -> Int
+get topping counts =
+    Dict.get (Topping.key topping) counts |> Maybe.withDefault 0
+
+
+set : Topping -> Int -> ToppingCount -> ToppingCount
+set topping value counts =
+    Dict.insert (Topping.key topping) value counts
+
+
+add : Topping -> Int -> ToppingCount -> ( ToppingCount, Int )
+add topping delta counts =
+    case ( get topping counts, delta > 0 ) of
+        ( 0, True ) ->
+            ( set topping delta counts, delta )
+
+        ( 0, False ) ->
+            ( counts, 0 )
+
+        ( val, False ) ->
+            if val + delta < 0 then
+                ( counts, val )
+            else
+                ( set topping (val + delta) counts, val + delta )
+
+        ( val, True ) ->
+            ( set topping (val + delta) counts, val + delta )
+
+
 
 -- DICT Product
 

@@ -1,7 +1,8 @@
 port module Host exposing (..)
 
-import Html exposing (Html, program, div, h1, h2, span, text)
+import Html exposing (Html, program, div, button, h1, h2, span, text)
 import Html.Attributes exposing (style)
+import Html.Events exposing (onClick)
 import Config exposing (Config)
 import Guest exposing (userView)
 import Preferences as Pref exposing (Preferences)
@@ -9,19 +10,23 @@ import ToppingCount
 import User exposing (User)
 import Topping exposing (Topping)
 import PizzaView
-import Socket
+import Socket exposing (State(..))
 
 
 type alias Model =
     { config : Config
     , userPrefs : Preferences
+    , toppings : List Topping
+    , users : List User
+    , socket : Socket.State ()
     }
 
 
 type Msg
     = AddSliceCount Int User Topping
     | SetSliceCount Int User Topping
-    | SendPreferences User
+    | SendToppingList User
+    | SetSocketState (Socket.State ())
     | Noop
 
 
@@ -32,21 +37,33 @@ initialModel =
         , partsPerPie = 4
         }
     , userPrefs = Pref.empty
+    , toppings = Topping.all
+    , users = []
+    , socket = NotRequested
     }
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ Socket.requestsForAllCounts
-            (Maybe.map SendPreferences
-                >> Maybe.withDefault Noop
-            )
-        , Socket.toppingCountUpdates
-            (Maybe.map (\( user, topping, count ) -> SetSliceCount count user topping)
-                >> Maybe.withDefault Noop
-            )
-        ]
+    case model.socket of
+        NotRequested ->
+            Sub.none
+
+        Joining ->
+            Socket.hostConnectionResponseFromServer SetSocketState
+
+        Joined () ->
+            Sub.batch
+                [ Socket.sliceTripletsFromGuest
+                    (Maybe.map (\( u, t, n ) -> SetSliceCount n u t)
+                        >> Maybe.withDefault Noop
+                    )
+                , Socket.toppingListRequestFromGuest
+                    (Result.toMaybe >> Maybe.map SendToppingList >> Maybe.withDefault (Debug.log "uh oh" Noop))
+                ]
+
+        Denied _ ->
+            Sub.none
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -58,9 +75,7 @@ update msg model =
                     model.userPrefs |> Pref.add user topping delta
             in
                 ( { model | userPrefs = newPrefs }
-                , Socket.updateToppingCount user
-                    topping
-                    (newValue |> Maybe.withDefault 0)
+                , Socket.broadcastSliceTriplet user topping newValue
                 )
 
         SetSliceCount count user topping ->
@@ -70,8 +85,28 @@ update msg model =
             in
                 ( { model | userPrefs = newPrefs }, Cmd.none )
 
-        SendPreferences user ->
-            ( model, Socket.sendAllCounts model.userPrefs )
+        SendToppingList user ->
+            ( { model | users = user :: model.users }
+            , Socket.sendToppingListToGuest model.toppings
+            )
+
+        SetSocketState state ->
+            let
+                command =
+                    case state of
+                        NotRequested ->
+                            Cmd.none
+
+                        Joining ->
+                            Socket.requestHostConnectionFromServer
+
+                        Joined _ ->
+                            Cmd.none
+
+                        Denied _ ->
+                            Cmd.none
+            in
+                ( { model | socket = state }, command )
 
         Noop ->
             ( model, Cmd.none )
@@ -83,22 +118,31 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ Pref.toToppingCount model.userPrefs
-            |> PizzaView.pies 100 model.config
-            |> div []
-        , usersView (AddSliceCount -1) (AddSliceCount 1) Topping.all model.userPrefs users
-        , h1 [] [ text "Changes" ]
-        , Pref.toToppingCount model.userPrefs
-            |> ToppingCount.stableOptions model.config
-            |> List.map (\toppings -> div [] [ text <| toString toppings ])
-            |> div []
-        ]
+    case model.socket of
+        NotRequested ->
+            div []
+                [ text "not requested"
+                , button [ onClick (SetSocketState Joining) ] [ text "Start" ]
+                ]
 
+        Joining ->
+            text "Setting up..."
 
-users : List User
-users =
-    [ "Dan", "Sivan", "Ella", "Daniel", "Gali" ] |> List.map User
+        Joined _ ->
+            div []
+                [ Pref.toToppingCount model.userPrefs
+                    |> PizzaView.pies 100 model.config
+                    |> div []
+                , usersView (AddSliceCount -1) (AddSliceCount 1) Topping.all model.userPrefs model.users
+                , h1 [] [ text "Changes" ]
+                , Pref.toToppingCount model.userPrefs
+                    |> ToppingCount.stableOptions model.config
+                    |> List.map (\toppings -> div [] [ text <| toString toppings ])
+                    |> div []
+                ]
+
+        Denied error ->
+            text ("Error: " ++ error)
 
 
 usersView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> Preferences -> List User -> Html msg
@@ -124,7 +168,7 @@ userView decrease increase toppings prefs user =
     in
         div []
             [ h2 [] [ text user.name ]
-            , Guest.userView (decrease user) (increase user) value toppings prefs
+            , Guest.userView (decrease user) (increase user) value toppings
             ]
 
 
@@ -135,25 +179,8 @@ userView decrease increase toppings prefs user =
 main : Program Never Model Msg
 main =
     program
-        { init = ( initialModel, Socket.connectAsHost True )
+        { init = ( initialModel, Socket.requestHostConnectionFromServer )
         , subscriptions = subscriptions
         , update = update
         , view = view
         }
-
-
-
--- REMOVE SINGLE
-
-
-removeSingle : a -> List a -> List a
-removeSingle x xs =
-    case xs of
-        [] ->
-            []
-
-        hd :: tl ->
-            if hd == x then
-                tl
-            else
-                hd :: removeSingle x tl

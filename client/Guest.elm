@@ -1,37 +1,92 @@
 module Guest exposing (..)
 
-import Html exposing (Html, program, div, button, text, span)
-import Html.Attributes exposing (disabled, style)
-import Html.Events exposing (onClick)
+import Html exposing (Html, program, div, input, button, text, span)
+import Html.Attributes exposing (disabled, style, value)
+import Html.Events exposing (onClick, onInput)
 import Topping exposing (Topping)
+import ToppingCount exposing (ToppingCount)
 import User exposing (User)
-import Preferences as Pref exposing (Preferences)
+import Socket exposing (State(..))
+import Preferences exposing (Preferences)
 
 
 type alias Model =
-    {}
+    { user : User
+    , group : Socket.State Group
+    , counts : ToppingCount
+    }
+
+
+type alias Group =
+    { toppings : List Topping
+    }
 
 
 type Msg
-    = Msg
+    = EditName String
+    | SetGroupState (Socket.State Group)
+    | AddSliceCount Int Topping
+    | Noop
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( {}
-    , Cmd.none
-    )
+initialModel : Model
+initialModel =
+    { user = { name = "" }
+    , group = NotRequested
+    , counts = ToppingCount.empty
+    }
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    case model.group of
+        NotRequested ->
+            Sub.none
+
+        Joining ->
+            Socket.toppingListFromHost (Socket.mapState Group >> SetGroupState)
+
+        Joined _ ->
+            Sub.none
+
+        Denied _ ->
+            Sub.none
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Msg ->
+        EditName name ->
+            ( { model | user = { name = name } }, Cmd.none )
+
+        SetGroupState state ->
+            let
+                command =
+                    case state of
+                        NotRequested ->
+                            Cmd.none
+
+                        Joining ->
+                            Socket.requestToppingsListFromHost model.user
+
+                        Joined _ ->
+                            Cmd.none
+
+                        Denied _ ->
+                            Cmd.none
+            in
+                ( { model | group = state }, command )
+
+        AddSliceCount delta topping ->
+            let
+                ( newCounts, newValue ) =
+                    model.counts |> ToppingCount.add topping delta
+            in
+                ( { model | counts = newCounts }
+                , Socket.broadcastSliceTriplet model.user topping newValue
+                )
+
+        Noop ->
             ( model, Cmd.none )
 
 
@@ -41,11 +96,34 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    text ""
+    case model.group of
+        NotRequested ->
+            div []
+                [ text "Enter your name"
+                , input
+                    [ onInput EditName
+                    , value model.user.name
+                    ]
+                    []
+                , button [ onClick (SetGroupState Joining) ] [ text "Join" ]
+                ]
+
+        Joining ->
+            text "Joining..."
+
+        Joined { toppings } ->
+            userView
+                (AddSliceCount -1)
+                (AddSliceCount 1)
+                (flip ToppingCount.get model.counts)
+                toppings
+
+        Denied error ->
+            text ("Error: " ++ error)
 
 
-userView : (Topping -> msg) -> (Topping -> msg) -> (Topping -> Int) -> List Topping -> Preferences -> Html msg
-userView decrease increase value toppings prefs =
+userView : (Topping -> msg) -> (Topping -> msg) -> (Topping -> Int) -> List Topping -> Html msg
+userView decrease increase value toppings =
     let
         counter topping =
             toppingCounter
@@ -104,7 +182,7 @@ toppingCounter decrease increase value topping =
 main : Program Never Model Msg
 main =
     program
-        { init = init
+        { init = ( initialModel, Cmd.none )
         , subscriptions = subscriptions
         , update = update
         , view = view

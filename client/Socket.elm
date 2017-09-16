@@ -1,15 +1,19 @@
 port module Socket
     exposing
         ( State(..)
-        , connectAsHost
-        , requestsForAllCounts
-        , toppingCountUpdates
-        , updateToppingCount
-        , sendAllCounts
+        , mapState
+        , requestHostConnectionFromServer
+        , hostConnectionResponseFromServer
+        , broadcastSliceTriplet
+        , sliceTripletsFromGuest
+        , requestToppingsListFromHost
+        , toppingListRequestFromGuest
+        , sendToppingListToGuest
+        , toppingListFromHost
         )
 
-import Json.Encode exposing (Value)
-import Json.Decode
+import Json.Encode as Encode exposing (Value)
+import Json.Decode as Decode
 import Preferences exposing (Preferences)
 import User exposing (User)
 import Topping exposing (Topping)
@@ -22,47 +26,133 @@ type State a
     | Denied String
 
 
-port connectAsHost : Bool -> Cmd msg
+decodeResult : Decode.Decoder (Result String a) -> Value -> Result String a
+decodeResult decoder value =
+    case Decode.decodeValue decoder value of
+        Err error ->
+            Err error
+
+        Ok result ->
+            result
 
 
-port sendToppingTriplet : Value -> Cmd msg
+stateFromResult : Result String a -> State a
+stateFromResult result =
+    case result of
+        Err error ->
+            Denied error
+
+        Ok a ->
+            Joined a
 
 
-port receiveToppingTriplet : (Value -> msg) -> Sub msg
+mapState : (a -> b) -> State a -> State b
+mapState fn state =
+    case state of
+        NotRequested ->
+            NotRequested
+
+        Joining ->
+            Joining
+
+        Joined a ->
+            Joined (fn a)
+
+        Denied err ->
+            Denied err
 
 
-port sendAllToppingCounts : Value -> Cmd msg
+
+-- HOST CONNECTION
 
 
-port receiveRequestForAllToppingCounts : (Value -> msg) -> Sub msg
+port connectAsHost : () -> Cmd msg
 
 
-requestsForAllCounts : (Maybe User -> msg) -> Sub msg
-requestsForAllCounts toMsg =
-    receiveRequestForAllToppingCounts
-        (Json.Decode.decodeValue User.decoder
-            >> Result.mapError (Debug.log "error on all topping counts")
-            >> Result.toMaybe
+port connectAsHostResponse : (Value -> msg) -> Sub msg
+
+
+requestHostConnectionFromServer : Cmd msg
+requestHostConnectionFromServer =
+    connectAsHost ()
+
+
+hostConnectionResponseFromServer : (State () -> msg) -> Sub msg
+hostConnectionResponseFromServer toMsg =
+    connectAsHostResponse
+        (decodeResult
+            (Decode.oneOf
+                [ Decode.field "ok" (Decode.succeed ()) |> Decode.map Ok
+                , Decode.field "error" Decode.string |> Decode.map Err
+                ]
+            )
+            >> stateFromResult
             >> toMsg
         )
 
 
-toppingCountUpdates : (Maybe ( User, Topping, Int ) -> msg) -> Sub msg
-toppingCountUpdates toMsg =
-    receiveToppingTriplet
-        (Json.Decode.decodeValue Preferences.decodeTriplet
+
+-- TRIPLET UPDATES
+
+
+port sendTriplet : Value -> Cmd msg
+
+
+port receiveTriplet : (Value -> msg) -> Sub msg
+
+
+broadcastSliceTriplet : User -> Topping -> Int -> Cmd msg
+broadcastSliceTriplet user topping value =
+    Preferences.encodeTriplet ( user, topping, value )
+        |> sendTriplet
+
+
+sliceTripletsFromGuest : (Maybe ( User, Topping, Int ) -> msg) -> Sub msg
+sliceTripletsFromGuest toMsg =
+    receiveTriplet
+        (Decode.decodeValue Preferences.decodeTriplet
             >> Result.mapError (Debug.log "error on topping triplet")
             >> Result.toMaybe
             >> toMsg
         )
 
 
-updateToppingCount : User -> Topping -> Int -> Cmd msg
-updateToppingCount user topping value =
-    Preferences.encodeTriplet ( user, topping, value )
-        |> sendToppingTriplet
+
+-- NEW GUESTS
 
 
-sendAllCounts : Preferences -> Cmd msg
-sendAllCounts prefs =
-    sendAllToppingCounts (Preferences.encode prefs)
+port requestToppingList : Value -> Cmd msg
+
+
+port receiveToppingListRequest : (Value -> msg) -> Sub msg
+
+
+port sendToppingList : Value -> Cmd msg
+
+
+port receiveToppingList : (Value -> msg) -> Sub msg
+
+
+requestToppingsListFromHost : User -> Cmd msg
+requestToppingsListFromHost user =
+    requestToppingList (User.encode user)
+
+
+toppingListRequestFromGuest : (Result String User -> msg) -> Sub msg
+toppingListRequestFromGuest toMsg =
+    receiveToppingListRequest
+        (Decode.decodeValue User.decoder >> toMsg)
+
+
+sendToppingListToGuest : List Topping -> Cmd msg
+sendToppingListToGuest toppings =
+    sendToppingList (Encode.list (List.map Topping.encode toppings))
+
+
+toppingListFromHost : (State (List Topping) -> msg) -> Sub msg
+toppingListFromHost toMsg =
+    receiveToppingList
+        (Decode.decodeValue (Decode.list Topping.decoder)
+            >> stateFromResult
+            >> toMsg
+        )
