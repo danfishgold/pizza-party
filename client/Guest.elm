@@ -105,7 +105,11 @@ view model =
                     , value model.user.name
                     ]
                     []
-                , button [ onClick (SetGroupState Joining) ] [ text "Join" ]
+                , button
+                    [ onClick (SetGroupState Joining)
+                    , disabled (String.isEmpty model.user.name)
+                    ]
+                    [ text "Join" ]
                 ]
 
         Joining ->
