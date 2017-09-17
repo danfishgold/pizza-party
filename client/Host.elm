@@ -146,11 +146,6 @@ view model =
                     |> PizzaView.pies 100 model.config
                     |> div []
                 , usersView (AddSliceCount -1) (AddSliceCount 1) Topping.all model.userPrefs model.users
-                , h1 [] [ text "Changes" ]
-                , Pref.toToppingCount model.userPrefs
-                    |> ToppingCount.stableOptions model.config
-                    |> List.map (\toppings -> div [] [ text <| toString toppings ])
-                    |> div []
                 ]
 
         Denied error ->
