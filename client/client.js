@@ -33,7 +33,6 @@ socket.on('triplet', data => {
 })
 
 socket.on('request-topping-list', data => {
-  console.log('hey')
   app.ports.receiveToppingListRequest.send(data)
 })
 

@@ -69,7 +69,7 @@ subscriptions model =
                 , Socket.toppingListRequestFromGuest
                     (Result.toMaybe
                         >> Maybe.map SendToppingList
-                        >> Maybe.withDefault (Debug.log "uh oh" Noop)
+                        >> Maybe.withDefault Noop
                     )
                 ]
 
