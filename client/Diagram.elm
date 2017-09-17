@@ -43,15 +43,15 @@ pies radius config toppingCount =
 
 
 pie : Float -> Int -> List Topping.Pair -> Svg msg
-pie radius slicesPerPie toppingCount =
+pie radius slicesPerPie pieCount =
     let
-        placeInPie ( topping, count ) ( prevs, totalSliceCount ) =
-            ( prevs ++ [ ( topping, totalSliceCount + 1, count ) ]
+        slicePositionInPie ( topping, count ) ( prevs, totalSliceCount ) =
+            ( ( topping, totalSliceCount + 1, count ) :: prevs
             , totalSliceCount + count
             )
 
-        sliceGroupView ( topping, start, count ) =
-            slices radius slicesPerPie start count topping
+        sliceView ( topping, start, count ) =
+            slice radius slicesPerPie start count topping
 
         translation =
             "translate("
@@ -60,11 +60,11 @@ pie radius slicesPerPie toppingCount =
                 ++ toString (radius + 1)
                 ++ ")"
     in
-        toppingCount
+        pieCount
             |> List.sortBy (negate << Tuple.second)
-            |> List.foldl placeInPie ( [], 0 )
+            |> List.foldl slicePositionInPie ( [], 0 )
             |> Tuple.first
-            |> List.map sliceGroupView
+            |> List.map sliceView
             |> g [ transform translation ]
             |> List.singleton
             |> svg
@@ -74,8 +74,8 @@ pie radius slicesPerPie toppingCount =
                 ]
 
 
-slices : Float -> Int -> Int -> Int -> Topping -> Svg msg
-slices radius slicesPerPie slicesStart sliceCount topping =
+slice : Float -> Int -> Int -> Int -> Topping -> Svg msg
+slice radius slicesPerPie slicesStart sliceCount topping =
     if sliceCount == 0 then
         g [] []
     else
@@ -88,7 +88,6 @@ slices radius slicesPerPie slicesStart sliceCount topping =
         in
             g []
                 [ arc radius startAngle endAngle Color.white
-                  -- , arc (radius * 0.9) startAngle endAngle Color.white
                 , arcTitle radius startAngle endAngle topping.name Color.black
                 ]
 
