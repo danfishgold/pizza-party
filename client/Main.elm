@@ -24,9 +24,12 @@ type Msg
 
 init : ( Model, Cmd Msg )
 init =
-    ( { role = Undetermined }
-    , Cmd.none
-    )
+    ( { role = Undetermined }, Cmd.none )
+
+
+fake : ( Model, Cmd Msg )
+fake =
+    ( { role = Host Host.fake }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg

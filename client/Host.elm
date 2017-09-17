@@ -43,6 +43,15 @@ initialModel =
     }
 
 
+fake : Model
+fake =
+    { initialModel
+        | userPrefs = Pref.empty
+        , users = [ User "Fake1", User "Fake2" ]
+        , socket = Joined ()
+    }
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.socket of

@@ -37,6 +37,14 @@ initialModel =
     }
 
 
+fake : Model
+fake =
+    { initialModel
+        | user = { name = "fake" }
+        , group = Joined { toppings = Topping.all }
+    }
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.group of
