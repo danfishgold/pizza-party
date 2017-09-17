@@ -6,7 +6,10 @@ import Config exposing (Config)
 
 
 type alias Division =
-    { pies : List Pie, remaining : Topping.Count, leftovers : Topping.Count }
+    { pies : List Pie
+    , remaining : Topping.Count
+    , leftovers : Topping.Count
+    }
 
 
 type alias Pie =
@@ -136,12 +139,12 @@ When this happens, there are two options:
 The recursion step has multiple options and when one results in a failure,
 it moves to the next option.
 Take the largest unorganized pair.
-1. If it can fit inside an existing partial pie, put it there (`tryFittingIn`). Otherwise,
+1. If it can fit in an existing pie, put it there (`tryFittingIn`). Otherwise,
 2. Start a new pie with that pair (`tryAsNewPie`). If this fails,
 3. Split the pair into two (`trySplitting`) and try again.
 
-I didn't check whether this algorithm always succeeds, but that's what fuzz tests
-are for :D.
+I didn't check whether this algorithm always succeeds,
+but that's what fuzz tests are for :D
 -}
 attemptToFill : Config -> List Pair -> List Pie -> Maybe (List Pie)
 attemptToFill config countSortedBigToSmall semipies =
@@ -179,7 +182,7 @@ orTry newTry previousTry =
         previousTry
 
 
-maybeFitInPies : Int -> Pair -> List Pie -> Maybe (List (List Pair))
+maybeFitInPies : Int -> Pair -> List Pie -> Maybe (List Pie)
 maybeFitInPies slicesPerPie ( topping, count ) sortedSemipies =
     case sortedSemipies of
         [] ->
@@ -197,7 +200,7 @@ tryFittingIn : Config -> Pair -> List Pair -> List Pie -> Maybe (List Pie)
 tryFittingIn config pair rest semipies =
     maybeFitInPies (config.slicesPerPart * config.partsPerPie)
         pair
-        (List.sortBy (negate << sliceCount) semipies)
+        (semipies |> List.sortBy (negate << sliceCount))
         |> Maybe.andThen (attemptToFill config rest)
 
 
