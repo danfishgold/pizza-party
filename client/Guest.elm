@@ -4,7 +4,7 @@ import Html exposing (Html, program, div, input, button, text, span)
 import Html.Attributes exposing (disabled, style, value)
 import Html.Events exposing (onClick, onInput)
 import Topping exposing (Topping)
-import ToppingCount exposing (ToppingCount)
+import Count
 import User exposing (User)
 import Socket exposing (State(..))
 
@@ -12,7 +12,7 @@ import Socket exposing (State(..))
 type alias Model =
     { user : User
     , group : Socket.State Group
-    , counts : ToppingCount
+    , counts : Topping.Count
     }
 
 
@@ -32,7 +32,7 @@ initialModel : Model
 initialModel =
     { user = { name = "" }
     , group = NotRequested
-    , counts = ToppingCount.empty
+    , counts = Topping.emptyCount
     }
 
 
@@ -75,7 +75,7 @@ update msg model =
         AddSliceCount delta topping ->
             let
                 ( newCounts, newValue ) =
-                    model.counts |> ToppingCount.add topping delta
+                    model.counts |> Count.add topping delta
             in
                 ( { model | counts = newCounts }
                 , Socket.broadcastSliceTriplet model.user topping newValue
@@ -114,7 +114,7 @@ view model =
             userView
                 (AddSliceCount -1)
                 (AddSliceCount 1)
-                (flip ToppingCount.get model.counts)
+                (flip Count.get model.counts)
                 toppings
 
         Denied error ->

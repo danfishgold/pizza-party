@@ -7,12 +7,12 @@ import Svg.Attributes exposing (x, y, textAnchor)
 import Topping exposing (Topping)
 import Color exposing (Color)
 import Color.Convert exposing (colorToCssRgb)
-import ToppingCount exposing (ToppingCount)
+import Count
 import Config exposing (Config)
 import Division
 
 
-pies : Float -> Config -> ToppingCount -> List (Svg msg)
+pies : Float -> Config -> Topping.Count -> List (Svg msg)
 pies radius config toppingCount =
     let
         slicesPerPie =
@@ -26,7 +26,10 @@ pies radius config toppingCount =
                 { slicesPerPart = 1
                 , partsPerPie = slicesPerPie
                 }
-                (separated.remaining ++ separated.leftovers |> ToppingCount.fromList)
+                (separated.remaining
+                    ++ separated.leftovers
+                    |> Topping.countFromList
+                )
 
         remainderLeftovers =
             Debug.log "remainder leftovers" remainder.leftovers
@@ -40,7 +43,7 @@ pies radius config toppingCount =
             |> List.map (pie radius slicesPerPie)
 
 
-pie : Float -> Int -> List ToppingCount.Pair -> Svg msg
+pie : Float -> Int -> List Topping.Pair -> Svg msg
 pie radius slicesPerPie toppingCount =
     let
         placeInPie ( topping, count ) ( prevs, totalSliceCount ) =

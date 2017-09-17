@@ -1,11 +1,30 @@
-module Topping exposing (Topping, Key, key, fromKey, all, decoder, encode)
+module Topping
+    exposing
+        ( Topping
+        , Pair
+        , Key
+        , key
+        , fromKey
+        , all
+        , decoder
+        , encode
+        , Count
+        , countFromList
+        , countFromKeyList
+        , emptyCount
+        )
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
+import Count
 
 
 type alias Topping =
     { name : String }
+
+
+type alias Pair =
+    ( Topping, Int )
 
 
 decoder : Decoder Topping
@@ -47,3 +66,22 @@ all =
     , "Tuna"
     ]
         |> List.map Topping
+
+
+type alias Count =
+    Count.Count Topping Key
+
+
+countFromList : List ( Topping, Int ) -> Count
+countFromList =
+    Count.fromList key fromKey
+
+
+countFromKeyList : List ( Key, Int ) -> Count
+countFromKeyList =
+    Count.fromKeyList key fromKey
+
+
+emptyCount : Count
+emptyCount =
+    Count.empty key fromKey

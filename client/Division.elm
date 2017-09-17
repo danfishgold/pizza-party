@@ -1,7 +1,7 @@
 module Division exposing (Division, makePies)
 
-import ToppingCount exposing (ToppingCount, Pair)
-import Topping exposing (Topping)
+import Count exposing (Count)
+import Topping exposing (Topping, Pair)
 import Config exposing (Config)
 
 
@@ -34,9 +34,9 @@ because those can't fill pies anyway.
 
 Then the main part happens. More on that in attemptToFill.
 -}
-makePies : Config -> ToppingCount -> Division
+makePies : Config -> Count Topping Topping.Key -> Division
 makePies config toppingCount =
-    { remaining = toppingCount |> ToppingCount.toList
+    { remaining = toppingCount |> Count.toList
     , pies = []
     , leftovers = []
     }
@@ -121,7 +121,9 @@ maybeFill config counts =
                     config.slicesPerPart * config.partsPerPie
 
                 ( pies, rest ) =
-                    List.partition (\semipie -> sliceCount semipie == slicesPerPie) semipies
+                    List.partition
+                        (\semipie -> sliceCount semipie == slicesPerPie)
+                        semipies
             in
                 Division pies (List.concat rest) []
 
@@ -202,7 +204,8 @@ fitPairInPies slicesPerPie ( topping, count ) sortedSemipies =
 
         biggestPie :: rest ->
             if sliceCount biggestPie + count > slicesPerPie then
-                fitPairInPies slicesPerPie ( topping, count ) rest |> Maybe.map ((::) biggestPie)
+                fitPairInPies slicesPerPie ( topping, count ) rest
+                    |> Maybe.map ((::) biggestPie)
             else
                 (( topping, count ) :: biggestPie) :: rest |> Just
 

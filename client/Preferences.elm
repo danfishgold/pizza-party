@@ -3,7 +3,7 @@ module Preferences exposing (..)
 import Dict exposing (Dict)
 import User exposing (User)
 import Topping exposing (Topping)
-import ToppingCount exposing (ToppingCount)
+import Count exposing (Count)
 
 
 type Preferences
@@ -49,11 +49,9 @@ add user topping delta preferences =
             ( set user topping (val + delta) preferences, val + delta )
 
 
-toToppingCount : Preferences -> ToppingCount
+toToppingCount : Preferences -> Topping.Count
 toToppingCount (Preferences prefs) =
-    Dict.foldl
-        (\( _, topping ) n ->
-            Dict.update topping (Maybe.withDefault 0 >> (+) n >> Just)
-        )
-        Dict.empty
-        prefs
+    prefs
+        |> Dict.toList
+        |> List.map (\( ( user, topping ), count ) -> ( topping, count ))
+        |> Topping.countFromKeyList
