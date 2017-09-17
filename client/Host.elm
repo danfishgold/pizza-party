@@ -22,8 +22,8 @@ type alias Model =
 
 
 type Msg
-    = AddSliceCount Int User Topping
-    | SetSliceCount Int User Topping
+    = AddSliceCount User Topping Int
+    | SetSliceCount User Topping Int
     | SendToppingList User
     | SetSocketState (Socket.State ())
     | Noop
@@ -62,11 +62,14 @@ subscriptions model =
         Joined () ->
             Sub.batch
                 [ Socket.sliceTripletsFromGuest
-                    (Maybe.map (\( u, t, n ) -> SetSliceCount n u t)
+                    (Maybe.map (\( u, t, n ) -> SetSliceCount u t n)
                         >> Maybe.withDefault Noop
                     )
                 , Socket.toppingListRequestFromGuest
-                    (Result.toMaybe >> Maybe.map SendToppingList >> Maybe.withDefault (Debug.log "uh oh" Noop))
+                    (Result.toMaybe
+                        >> Maybe.map SendToppingList
+                        >> Maybe.withDefault (Debug.log "uh oh" Noop)
+                    )
                 ]
 
         Denied _ ->
@@ -76,25 +79,38 @@ subscriptions model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        AddSliceCount delta user topping ->
+        AddSliceCount user topping delta ->
             let
                 ( newCount, newValue ) =
-                    model.userCounts |> Dict.get user.name |> Maybe.withDefault Topping.emptyCount |> Count.add topping delta
+                    model.userCounts
+                        |> Dict.get user.name
+                        |> Maybe.withDefault Topping.emptyCount
+                        |> Count.add topping delta
             in
-                ( { model | userCounts = Dict.insert user.name newCount model.userCounts }
+                ( { model
+                    | userCounts =
+                        Dict.insert user.name newCount model.userCounts
+                  }
                 , Socket.broadcastSliceTriplet user topping newValue
                 )
 
-        SetSliceCount count user topping ->
+        SetSliceCount user topping count ->
             let
                 newCounts =
-                    model.userCounts |> Dict.update user.name (Maybe.withDefault Topping.emptyCount >> Count.set topping count >> Just)
+                    model.userCounts
+                        |> Dict.update user.name
+                            (Maybe.withDefault Topping.emptyCount
+                                >> Count.set topping count
+                                >> Just
+                            )
             in
                 ( { model | userCounts = newCounts }, Cmd.none )
 
         SendToppingList user ->
             if List.member user model.users then
-                ( model, Socket.sendToppingListOrErrorToGuest (Err "Name already exists") )
+                ( model
+                , Socket.sendToppingListOrErrorToGuest (Err "Name already exists")
+                )
             else
                 ( { model | users = user :: model.users }
                 , Socket.sendToppingListOrErrorToGuest (Ok model.toppings)
@@ -142,37 +158,33 @@ view model =
                 , if List.isEmpty model.users then
                     text "But nobody came."
                   else
-                    usersView (AddSliceCount -1) (AddSliceCount 1) Topping.all model.users model.userCounts
+                    div []
+                        [ h1 [] [ text "Guests" ]
+                        , model.users
+                            |> List.map (userView AddSliceCount model.toppings model.userCounts)
+                            |> div
+                                []
+                        ]
                 ]
 
         Denied error ->
             text ("Error: " ++ error)
 
 
-usersView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> List User -> Dict String Topping.Count -> Html msg
-usersView decrease increase toppings users userCounts =
-    div []
-        [ h1 [] [ text "Guests" ]
-        , users
-            |> List.map (userView decrease increase toppings userCounts)
-            |> div
-                []
-        ]
-
-
-userView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> Dict String Topping.Count -> User -> Html msg
-userView decrease increase toppings userCounts user =
+userView :
+    (User -> Topping -> Int -> msg)
+    -> List Topping
+    -> Dict String Topping.Count
+    -> User
+    -> Html msg
+userView modify toppings userCounts user =
     let
-        value topping =
+        userCount user =
             userCounts
                 |> Dict.get user.name
                 |> Maybe.withDefault Topping.emptyCount
-                |> Count.get topping
     in
         div []
             [ h2 [] [ text user.name ]
-            , Guest.userView (decrease user)
-                (increase user)
-                value
-                toppings
+            , Guest.userView (modify user) (userCount user) toppings
             ]

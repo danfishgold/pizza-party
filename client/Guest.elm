@@ -24,8 +24,8 @@ type alias Group =
 type Msg
     = EditName String
     | SetGroupState (Socket.State Group)
-    | AddSliceCount Int Topping
-    | SetSliceCount Int Topping
+    | AddSliceCount Topping Int
+    | SetSliceCount Topping Int
     | Noop
 
 
@@ -63,7 +63,7 @@ onTripletUpdate model triplet =
     case triplet of
         Just ( user, topping, count ) ->
             if user.name == model.user.name then
-                SetSliceCount count topping
+                SetSliceCount topping count
             else
                 Noop
 
@@ -89,7 +89,7 @@ update msg model =
             in
                 ( { model | group = state }, command )
 
-        AddSliceCount delta topping ->
+        AddSliceCount topping delta ->
             let
                 ( newCounts, newValue ) =
                     model.counts |> Count.add topping delta
@@ -98,7 +98,7 @@ update msg model =
                 , Socket.broadcastSliceTriplet model.user topping newValue
                 )
 
-        SetSliceCount newValue topping ->
+        SetSliceCount topping newValue ->
             ( { model | counts = model.counts |> Count.set topping newValue }
             , Cmd.none
             )
@@ -133,24 +133,20 @@ view model =
             text "Joining..."
 
         Joined { toppings } ->
-            userView
-                (AddSliceCount -1)
-                (AddSliceCount 1)
-                (flip Count.get model.counts)
-                toppings
+            userView AddSliceCount model.counts toppings
 
         Denied error ->
             text ("Error: " ++ error)
 
 
-userView : (Topping -> msg) -> (Topping -> msg) -> (Topping -> Int) -> List Topping -> Html msg
-userView decrease increase value toppings =
+userView : (Topping -> Int -> msg) -> Topping.Count -> List Topping -> Html msg
+userView modify count toppings =
     let
         counter topping =
             toppingCounter
-                (decrease topping)
-                (increase topping)
-                (value topping)
+                (modify topping -1)
+                (modify topping 1)
+                (Count.get topping count)
                 topping
     in
         List.map counter toppings |> div []
