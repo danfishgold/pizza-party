@@ -1,6 +1,6 @@
 port module Host exposing (..)
 
-import Html exposing (Html, program, div, button, h1, h2, span, a, text)
+import Html exposing (Html, program, div, p, button, h1, h2, span, a, text)
 import Html.Attributes exposing (href)
 import Html.Events exposing (onClick)
 import Config exposing (Config)
@@ -142,8 +142,7 @@ view model =
     case model.socket of
         NotRequested ->
             div []
-                [ text "not requested"
-                , button [ onClick (SetSocketState Joining) ] [ text "Start" ]
+                [ button [ onClick (SetSocketState Joining) ] [ text "Start" ]
                 ]
 
         Joining ->
@@ -158,8 +157,8 @@ view model =
                     |> div []
                 , if List.isEmpty model.users then
                     div []
-                        [ div [] [ text "But nobody came." ]
-                        , div []
+                        [ p [] [ text "But nobody came." ]
+                        , p []
                             [ text "(Tell guests to enter their order on "
                             , a [ href "https://pizzaparty.glitch.me" ] [ text "pizzaparty.glitch.me" ]
                             , text ")"

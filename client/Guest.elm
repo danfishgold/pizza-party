@@ -1,12 +1,13 @@
 module Guest exposing (..)
 
-import Html exposing (Html, program, div, input, button, text, span, a)
+import Html exposing (Html, program, div, p, form, input, button, text, span, a)
 import Html.Attributes exposing (disabled, style, value, href)
 import Html.Events exposing (onClick, onInput)
 import Topping exposing (Topping)
 import Count
 import User exposing (User)
 import Socket exposing (State(..))
+import Json.Decode
 
 
 type alias Model =
@@ -111,11 +112,19 @@ update msg model =
 -- VIEW
 
 
+onSubmit : msg -> Html.Attribute msg
+onSubmit msg =
+    Html.Events.onWithOptions "submit"
+        { preventDefault = True, stopPropagation = False }
+        (Json.Decode.succeed msg)
+
+
 view : Model -> Html Msg
 view model =
     case model.group of
         NotRequested ->
-            div []
+            form
+                [ onSubmit <| SetGroupState Joining ]
                 [ text "Enter your name"
                 , input
                     [ onInput EditName
@@ -123,7 +132,7 @@ view model =
                     ]
                     []
                 , button
-                    [ onClick (SetGroupState Joining)
+                    [ onClick <| SetGroupState Joining
                     , disabled (String.isEmpty model.user.name)
                     ]
                     [ text "Join" ]
@@ -131,8 +140,8 @@ view model =
 
         Joining ->
             div []
-                [ div [] [ text "Joining..." ]
-                , div []
+                [ p [] [ text "Joining..." ]
+                , p []
                     [ text "(Make sure the host is on "
                     , a [ href "https://pizzaparty.glitch.me" ] [ text "pizzaparty.glitch.me" ]
                     , text ", otherwise this won't work.)"
