@@ -138,7 +138,7 @@ view model =
                     |> Diagram.pies 100 model.config
                     |> div []
                 , if List.isEmpty model.users then
-                    text ""
+                    text "But nobody came."
                   else
                     usersView (AddSliceCount -1) (AddSliceCount 1) Topping.all model.userPrefs model.users
                 ]
