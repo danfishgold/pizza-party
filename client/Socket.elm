@@ -13,10 +13,12 @@ port module Socket
         )
 
 import Json.Encode as Encode exposing (Value)
-import Json.Decode as Decode
-import Preferences exposing (Preferences)
+import Json.Decode as Decode exposing (Decoder)
 import User exposing (User)
 import Topping exposing (Topping)
+
+
+-- STATE
 
 
 type State a
@@ -24,16 +26,6 @@ type State a
     | Joining
     | Joined a
     | Denied String
-
-
-decodeResult : Decode.Decoder (Result String a) -> Value -> Result String a
-decodeResult decoder value =
-    case Decode.decodeValue decoder value of
-        Err error ->
-            Err error
-
-        Ok result ->
-            result
 
 
 stateFromResult : Result String a -> State a
@@ -60,6 +52,37 @@ mapState fn state =
 
         Denied err ->
             Denied err
+
+
+
+-- DECODERS AND ENCODERS
+
+
+decodeTriplet : Decoder ( User, Topping, Int )
+decodeTriplet =
+    Decode.map3 (,,)
+        (Decode.field "user" User.decoder)
+        (Decode.field "topping" Topping.decoder)
+        (Decode.field "count" Decode.int)
+
+
+encodeTriplet : ( User, Topping, Int ) -> Encode.Value
+encodeTriplet ( user, topping, count ) =
+    Encode.object
+        [ ( "user", User.encode user )
+        , ( "topping", Topping.encode topping )
+        , ( "count", Encode.int count )
+        ]
+
+
+decodeResult : Decode.Decoder (Result String a) -> Value -> Result String a
+decodeResult decoder value =
+    case Decode.decodeValue decoder value of
+        Err error ->
+            Err error
+
+        Ok result ->
+            result
 
 
 
@@ -103,14 +126,14 @@ port receiveTriplet : (Value -> msg) -> Sub msg
 
 broadcastSliceTriplet : User -> Topping -> Int -> Cmd msg
 broadcastSliceTriplet user topping value =
-    Preferences.encodeTriplet ( user, topping, value )
+    encodeTriplet ( user, topping, value )
         |> sendTriplet
 
 
 sliceTripletsFromGuest : (Maybe ( User, Topping, Int ) -> msg) -> Sub msg
 sliceTripletsFromGuest toMsg =
     receiveTriplet
-        (Decode.decodeValue Preferences.decodeTriplet
+        (Decode.decodeValue decodeTriplet
             >> Result.mapError (Debug.log "error on topping triplet")
             >> Result.toMaybe
             >> toMsg
