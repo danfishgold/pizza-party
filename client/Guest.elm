@@ -140,7 +140,7 @@ toppingCounter decrease increase value topping =
         color =
             case value of
                 0 ->
-                    "lightgray"
+                    "#eee"
 
                 1 ->
                     "yellow"
