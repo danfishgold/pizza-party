@@ -1,12 +1,10 @@
 port module Host exposing (..)
 
 import Html exposing (Html, program, div, button, h1, h2, span, text)
-import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import Config exposing (Config)
 import Guest exposing (userView)
 import Preferences as Pref exposing (Preferences)
-import ToppingCount
 import User exposing (User)
 import Topping exposing (Topping)
 import PizzaView
@@ -106,16 +104,10 @@ update msg model =
             let
                 command =
                     case state of
-                        NotRequested ->
-                            Cmd.none
-
                         Joining ->
                             Socket.requestHostConnectionFromServer
 
-                        Joined _ ->
-                            Cmd.none
-
-                        Denied _ ->
+                        _ ->
                             Cmd.none
             in
                 ( { model | socket = state }, command )
@@ -145,7 +137,10 @@ view model =
                 [ Pref.toToppingCount model.userPrefs
                     |> PizzaView.pies 100 model.config
                     |> div []
-                , usersView (AddSliceCount -1) (AddSliceCount 1) Topping.all model.userPrefs model.users
+                , if List.isEmpty model.users then
+                    text ""
+                  else
+                    usersView (AddSliceCount -1) (AddSliceCount 1) Topping.all model.userPrefs model.users
                 ]
 
         Denied error ->
@@ -154,17 +149,13 @@ view model =
 
 usersView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> Preferences -> List User -> Html msg
 usersView decrease increase toppings prefs users =
-    let
-        userDiv user =
-            userView decrease increase toppings prefs user
-    in
-        div []
-            [ h1 [] [ text "Users" ]
-            , users
-                |> List.map userDiv
-                |> div
-                    []
-            ]
+    div []
+        [ h1 [] [ text "Users" ]
+        , users
+            |> List.map (userView decrease increase toppings prefs)
+            |> div
+                []
+        ]
 
 
 userView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> Preferences -> User -> Html msg
@@ -177,17 +168,3 @@ userView decrease increase toppings prefs user =
             [ h2 [] [ text user.name ]
             , Guest.userView (decrease user) (increase user) value toppings
             ]
-
-
-
--- MAIN
-
-
-main : Program Never Model Msg
-main =
-    program
-        { init = ( initialModel, Socket.requestHostConnectionFromServer )
-        , subscriptions = subscriptions
-        , update = update
-        , view = view
-        }

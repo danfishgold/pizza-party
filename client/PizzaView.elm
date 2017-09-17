@@ -1,7 +1,9 @@
 module PizzaView exposing (pies)
 
 import Svg exposing (Svg, svg, g, path, text_, text)
-import Svg.Attributes exposing (width, height, d, transform, stroke, fill, x, y, textAnchor)
+import Svg.Attributes exposing (width, height, transform)
+import Svg.Attributes exposing (d, stroke, fill)
+import Svg.Attributes exposing (x, y, textAnchor)
 import Topping exposing (Topping)
 import Color exposing (Color)
 import Color.Convert exposing (colorToCssRgb)
@@ -48,13 +50,20 @@ pie radius slicesPerPie toppingCount =
 
         sliceGroupView ( topping, start, count ) =
             slices radius slicesPerPie start count topping
+
+        translation =
+            "translate("
+                ++ toString (radius + 1)
+                ++ ","
+                ++ toString (radius + 1)
+                ++ ")"
     in
         toppingCount
             |> List.sortBy (negate << Tuple.second)
             |> List.foldl placeInPie ( [], 0 )
             |> Tuple.first
             |> List.map sliceGroupView
-            |> g [ transform <| "translate(" ++ toString (radius + 1) ++ "," ++ toString (radius + 1) ++ ")" ]
+            |> g [ transform translation ]
             |> List.singleton
             |> svg
                 [ width <| toString <| radius * 2 + 2
@@ -73,7 +82,7 @@ slices radius slicesPerPie slicesStart sliceCount topping =
                 degrees 360 * toFloat (slicesStart - 1) / toFloat slicesPerPie
 
             endAngle =
-                degrees 360 * toFloat (slicesStart - 1 + sliceCount) / toFloat slicesPerPie
+                startAngle + degrees 360 * toFloat sliceCount / toFloat slicesPerPie
         in
             g []
                 [ arc radius startAngle endAngle Color.white

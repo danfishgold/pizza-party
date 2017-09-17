@@ -7,7 +7,6 @@ import Topping exposing (Topping)
 import ToppingCount exposing (ToppingCount)
 import User exposing (User)
 import Socket exposing (State(..))
-import Preferences exposing (Preferences)
 
 
 type alias Model =
@@ -48,16 +47,10 @@ fake =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.group of
-        NotRequested ->
-            Sub.none
-
         Joining ->
             Socket.toppingListFromHost (Socket.mapState Group >> SetGroupState)
 
-        Joined _ ->
-            Sub.none
-
-        Denied _ ->
+        _ ->
             Sub.none
 
 
@@ -71,16 +64,10 @@ update msg model =
             let
                 command =
                     case state of
-                        NotRequested ->
-                            Cmd.none
-
                         Joining ->
                             Socket.requestToppingsListFromHost model.user
 
-                        Joined _ ->
-                            Cmd.none
-
-                        Denied _ ->
+                        _ ->
                             Cmd.none
             in
                 ( { model | group = state }, command )
@@ -185,17 +172,3 @@ toppingCounter decrease increase value topping =
                 , button [ onClick <| increase ] [ text "+" ]
                 ]
             ]
-
-
-
--- MAIN
-
-
-main : Program Never Model Msg
-main =
-    program
-        { init = ( initialModel, Cmd.none )
-        , subscriptions = subscriptions
-        , update = update
-        , view = view
-        }
