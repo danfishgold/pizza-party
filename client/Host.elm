@@ -150,7 +150,7 @@ view model =
 usersView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> Preferences -> List User -> Html msg
 usersView decrease increase toppings prefs users =
     div []
-        [ h1 [] [ text "Users" ]
+        [ h1 [] [ text "Guests" ]
         , users
             |> List.map (userView decrease increase toppings prefs)
             |> div
