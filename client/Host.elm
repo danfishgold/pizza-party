@@ -1,6 +1,7 @@
 port module Host exposing (..)
 
-import Html exposing (Html, program, div, button, h1, h2, span, text)
+import Html exposing (Html, program, div, button, h1, h2, span, a, text)
+import Html.Attributes exposing (href)
 import Html.Events exposing (onClick)
 import Config exposing (Config)
 import Guest exposing (userView)
@@ -156,7 +157,14 @@ view model =
                     |> Diagram.pies 100 model.config
                     |> div []
                 , if List.isEmpty model.users then
-                    text "But nobody came."
+                    div []
+                        [ div [] [ text "But nobody came." ]
+                        , div []
+                            [ text "(Tell guests to enter their order on "
+                            , a [ href "https://pizzaparty.glitch.me" ] [ text "pizzaparty.glitch.me" ]
+                            , text ")"
+                            ]
+                        ]
                   else
                     div []
                         [ h1 [] [ text "Guests" ]

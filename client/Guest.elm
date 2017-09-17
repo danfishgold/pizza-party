@@ -1,7 +1,7 @@
 module Guest exposing (..)
 
-import Html exposing (Html, program, div, input, button, text, span)
-import Html.Attributes exposing (disabled, style, value)
+import Html exposing (Html, program, div, input, button, text, span, a)
+import Html.Attributes exposing (disabled, style, value, href)
 import Html.Events exposing (onClick, onInput)
 import Topping exposing (Topping)
 import Count
@@ -130,7 +130,14 @@ view model =
                 ]
 
         Joining ->
-            text "Joining..."
+            div []
+                [ div [] [ text "Joining..." ]
+                , div []
+                    [ text "(Make sure the host is on "
+                    , a [ href "https://pizzaparty.glitch.me" ] [ text "pizzaparty.glitch.me" ]
+                    , text ", otherwise this won't work.)"
+                    ]
+                ]
 
         Joined { toppings } ->
             userView AddSliceCount model.counts toppings
