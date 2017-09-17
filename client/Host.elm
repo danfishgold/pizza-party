@@ -7,7 +7,7 @@ import Guest exposing (userView)
 import Preferences as Pref exposing (Preferences)
 import User exposing (User)
 import Topping exposing (Topping)
-import PizzaView
+import Diagram
 import Socket exposing (State(..))
 
 
@@ -135,7 +135,7 @@ view model =
         Joined _ ->
             div []
                 [ Pref.toToppingCount model.userPrefs
-                    |> PizzaView.pies 100 model.config
+                    |> Diagram.pies 100 model.config
                     |> div []
                 , if List.isEmpty model.users then
                     text ""

@@ -1,4 +1,4 @@
-module PizzaView exposing (pies)
+module Diagram exposing (pies)
 
 import Svg exposing (Svg, svg, g, path, text_, text)
 import Svg.Attributes exposing (width, height, transform)
@@ -7,7 +7,6 @@ import Svg.Attributes exposing (x, y, textAnchor)
 import Topping exposing (Topping)
 import Color exposing (Color)
 import Color.Convert exposing (colorToCssRgb)
-import Count
 import Config exposing (Config)
 import Division
 
