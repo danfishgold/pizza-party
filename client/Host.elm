@@ -152,7 +152,7 @@ view model =
             div []
                 [ model.userCounts
                     |> Dict.values
-                    |> Topping.sumCounts
+                    |> Topping.concatCounts
                     |> Diagram.pies 100 model.config
                     |> div []
                 , if List.isEmpty model.users then

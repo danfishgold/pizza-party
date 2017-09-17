@@ -9,6 +9,7 @@ import Color exposing (Color)
 import Color.Convert exposing (colorToCssRgb)
 import Config exposing (Config)
 import Division
+import Count
 
 
 pies : Float -> Config -> Topping.Count -> List (Svg msg)
@@ -25,14 +26,11 @@ pies radius config toppingCount =
                 { slicesPerPart = 1
                 , partsPerPie = slicesPerPie
                 }
-                (separated.remaining
-                    ++ separated.leftovers
-                    |> Topping.countFromList
-                )
+                (Count.join separated.remaining separated.leftovers)
     in
         separated.pies
             ++ remainder.pies
-            ++ [ remainder.remaining ]
+            ++ [ Count.toList remainder.remaining ]
             |> List.map (pie radius slicesPerPie)
 
 

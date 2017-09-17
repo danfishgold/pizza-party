@@ -6,22 +6,34 @@ import Config exposing (Config)
 
 
 type alias Division =
-    { pies : List (List Pair), remaining : List Pair, leftovers : List Pair }
+    { pies : List Pie, remaining : Topping.Count, leftovers : Topping.Count }
+
+
+type alias Pie =
+    List Pair
+
+
+emptyDivision : Division
+emptyDivision =
+    { pies = []
+    , remaining = Topping.emptyCount
+    , leftovers = Topping.emptyCount
+    }
 
 
 
 --
 
 
-map : (List Pair -> Division) -> Division -> Division
+map : (Topping.Count -> Division) -> Division -> Division
 map remainingParser { pies, remaining, leftovers } =
     let
-        sortUnsorted =
+        sortRemaining =
             remainingParser remaining
     in
-        { sortUnsorted
-            | pies = pies ++ sortUnsorted.pies
-            , leftovers = leftovers ++ sortUnsorted.leftovers
+        { sortRemaining
+            | pies = pies ++ sortRemaining.pies
+            , leftovers = Count.join leftovers sortRemaining.leftovers
         }
 
 
@@ -35,11 +47,8 @@ because those can't fill pies anyway.
 Then the main part happens. More on that in attemptToFill.
 -}
 makePies : Config -> Count Topping Topping.Key -> Division
-makePies config toppingCount =
-    { remaining = toppingCount |> Count.toList
-    , pies = []
-    , leftovers = []
-    }
+makePies config count =
+    { emptyDivision | remaining = count }
         |> map (extractWholePies config)
         |> map (extractLeftovers config)
         |> map (maybeFill config)
@@ -49,29 +58,26 @@ makePies config toppingCount =
 --
 
 
-splitToPies : Int -> Pair -> List Pair
+splitToPies : Int -> Pair -> List Pie
 splitToPies slicesPerPie ( topping, count ) =
-    if count > slicesPerPie then
-        ( topping, slicesPerPie )
-            :: splitToPies slicesPerPie ( topping, count - slicesPerPie )
-    else
-        [ ( topping, count ) ]
+    List.repeat (count // slicesPerPie) [ ( topping, slicesPerPie ) ]
 
 
-extractWholePies : Config -> List Pair -> Division
-extractWholePies config toppingCounts =
+extractWholePies : Config -> Topping.Count -> Division
+extractWholePies config count =
     let
         slicesPerPie =
             config.slicesPerPart * config.partsPerPie
 
-        ( wholePies, lessThanWholePies ) =
-            toppingCounts
-                |> List.concatMap (splitToPies slicesPerPie)
-                |> List.partition (\( _, count ) -> count == slicesPerPie)
+        ( wholePies, remaining ) =
+            Count.splitValuesModulo slicesPerPie count
     in
-        { pies = List.map List.singleton wholePies
-        , remaining = lessThanWholePies
-        , leftovers = []
+        { emptyDivision
+            | pies =
+                wholePies
+                    |> Count.toList
+                    |> List.concatMap (splitToPies slicesPerPie)
+            , remaining = remaining
         }
 
 
@@ -79,29 +85,15 @@ extractWholePies config toppingCounts =
 --
 
 
-separatePartsAndLeftovers : Int -> Pair -> ( Topping, Int, Int )
-separatePartsAndLeftovers slicesPerPart ( topping, count ) =
-    ( topping
-    , (count // slicesPerPart) * slicesPerPart
-    , count % slicesPerPart
-    )
-
-
-extractLeftovers : Config -> List Pair -> Division
-extractLeftovers { slicesPerPart } toppingCounts =
+extractLeftovers : Config -> Topping.Count -> Division
+extractLeftovers { slicesPerPart } count =
     let
-        split ( topping, partCount, leftoverCount ) =
-            ( ( topping, partCount ), ( topping, leftoverCount ) )
-
-        ( parts, leftovers ) =
-            toppingCounts
-                |> List.map (separatePartsAndLeftovers slicesPerPart)
-                |> List.map split
-                |> List.unzip
+        ( rounded, leftovers ) =
+            Count.splitValuesModulo slicesPerPart count
     in
-        { pies = []
-        , remaining = parts |> List.filter (not << isEmpty)
-        , leftovers = leftovers |> List.filter (not << isEmpty)
+        { emptyDivision
+            | remaining = rounded
+            , leftovers = leftovers
         }
 
 
@@ -109,11 +101,11 @@ extractLeftovers { slicesPerPart } toppingCounts =
 --
 
 
-maybeFill : Config -> List Pair -> Division
-maybeFill config counts =
-    case attemptToFill config (List.sortBy sortKey counts) [] of
+maybeFill : Config -> Topping.Count -> Division
+maybeFill config count =
+    case attemptToFill config (List.sortBy sortKey <| Count.toList count) [] of
         Nothing ->
-            Division [] counts []
+            emptyDivision
 
         Just semipies ->
             let
@@ -125,7 +117,10 @@ maybeFill config counts =
                         (\semipie -> sliceCount semipie == slicesPerPie)
                         semipies
             in
-                Division pies (List.concat rest) []
+                { emptyDivision
+                    | pies = pies
+                    , remaining = rest |> List.concat |> Topping.countFromList
+                }
 
 
 {-|
@@ -148,7 +143,7 @@ Take the largest unorganized pair.
 I didn't check whether this algorithm always succeeds, but that's what fuzz tests
 are for :D.
 -}
-attemptToFill : Config -> List Pair -> List (List Pair) -> Maybe (List (List Pair))
+attemptToFill : Config -> List Pair -> List Pie -> Maybe (List Pie)
 attemptToFill config countsSortedBigToSmall semipies =
     let
         pieCounts =
@@ -188,8 +183,8 @@ attemptToFill config countsSortedBigToSmall semipies =
                                     let
                                         sortedCountsWithSplit =
                                             rest
-                                                |> insertToSorted ( topping, config.slicesPerPart ) sortKey
-                                                |> insertToSorted ( topping, count - config.slicesPerPart ) sortKey
+                                                |> insertToSorted ( topping, config.slicesPerPart )
+                                                |> insertToSorted ( topping, count - config.slicesPerPart )
                                     in
                                         attemptToFill config sortedCountsWithSplit semipies
                                 else
@@ -229,14 +224,14 @@ sliceCount =
     List.map Tuple.second >> List.sum
 
 
-insertToSorted : a -> (a -> comparable) -> List a -> List a
-insertToSorted x key xs =
-    case xs of
+insertToSorted : Pair -> List Pair -> List Pair
+insertToSorted pair pairs =
+    case pairs of
         [] ->
-            [ x ]
+            [ pair ]
 
         hd :: tl ->
-            if key x < key hd then
-                x :: xs
+            if sortKey pair < sortKey hd then
+                pair :: pairs
             else
-                hd :: insertToSorted x key tl
+                hd :: insertToSorted pair tl

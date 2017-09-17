@@ -25,6 +25,41 @@ setDict newDict (Count c) =
     Count { c | dict = newDict }
 
 
+mapValues : (Int -> Int) -> Count key comparable -> Count key comparable
+mapValues fn ((Count { dict }) as c) =
+    dict
+        |> Dict.map (always fn)
+        |> flip setDict c
+
+
+filterValues : (Int -> Bool) -> Count key comparable -> Count key comparable
+filterValues fn ((Count { dict }) as c) =
+    dict |> Dict.filter (always fn) |> flip setDict c
+
+
+splitValues : (Int -> ( Int, Int )) -> Count key comparable -> ( Count key comparable, Count key comparable )
+splitValues splitFn (Count c) =
+    c.dict
+        |> Dict.map (always splitFn)
+        |> Dict.foldl (\k -> tupleMap2 (Dict.insert k)) ( Dict.empty, Dict.empty )
+        |> tupleMap (count c.toComparable c.fromComparable)
+
+
+splitValuesModulo : Int -> Count key comparable -> ( Count key comparable, Count key comparable )
+splitValuesModulo rounder =
+    splitValues (\n -> ( n // rounder * rounder, n % rounder ))
+
+
+tupleMap : (a -> b) -> ( a, a ) -> ( b, b )
+tupleMap fn ( a1, a2 ) =
+    ( fn a1, fn a2 )
+
+
+tupleMap2 : (a -> b -> c) -> ( a, a ) -> ( b, b ) -> ( c, c )
+tupleMap2 fn ( a1, a2 ) ( b1, b2 ) =
+    ( fn a1 b1, fn a2 b2 )
+
+
 map2 : (Int -> Int -> Int) -> Count key comparable -> Count key comparable -> Count key comparable
 map2 op (Count opt1) (Count opt2) =
     let
@@ -39,6 +74,11 @@ map2 op (Count opt1) (Count opt2) =
             opt2.dict
             Dict.empty
             |> count opt1.toComparable opt1.fromComparable
+
+
+join : Count key comparable -> Count key comparable -> Count key comparable
+join =
+    map2 (+)
 
 
 sum : Count key comparable -> Int
