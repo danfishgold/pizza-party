@@ -127,7 +127,7 @@ maybeFill config count =
 This is the main part. It's a recursive function whose job is to fill pies.
 
 It can return a list of pies, or Nothing.
-The end condition is an empty `countsSortedBigToSmall`, meaning there are no
+The end condition is an empty `countSortedBigToSmall`, meaning there are no
 more pairs to organize.
 When this happens, there are two options:
 1. All pies except for at most one are full = success
@@ -136,26 +136,26 @@ When this happens, there are two options:
 The recursion step has multiple options and when one results in a failure,
 it moves to the next option.
 Take the largest unorganized pair.
-1. If it can fit inside an existing partial pie, put it there. Otherwise,
-2. Start a new pie with that pair. If this fails,
-3. Split the pair into two and try again.
+1. If it can fit inside an existing partial pie, put it there (`tryFittingIn`). Otherwise,
+2. Start a new pie with that pair (`tryAsNewPie`). If this fails,
+3. Split the pair into two (`trySplitting`) and try again.
 
 I didn't check whether this algorithm always succeeds, but that's what fuzz tests
 are for :D.
 -}
 attemptToFill : Config -> List Pair -> List Pie -> Maybe (List Pie)
-attemptToFill config countsSortedBigToSmall semipies =
+attemptToFill config countSortedBigToSmall semipies =
     let
-        pieCounts =
+        pieSizes =
             List.map sliceCount semipies
 
         slicesPerPie =
             config.slicesPerPart * config.partsPerPie
     in
-        case countsSortedBigToSmall of
+        case countSortedBigToSmall of
             [] ->
                 if
-                    pieCounts
+                    pieSizes
                         |> List.filter (\count -> count < slicesPerPie)
                         |> List.length
                         |> \unfilledPies -> unfilledPies <= 1
@@ -164,45 +164,60 @@ attemptToFill config countsSortedBigToSmall semipies =
                 else
                     Nothing
 
-            ( topping, count ) :: rest ->
-                case
-                    fitPairInPies slicesPerPie
-                        ( topping, count )
-                        (List.sortBy (negate << sliceCount) semipies)
-                of
-                    Just newPies ->
-                        attemptToFill config rest newPies
-
-                    Nothing ->
-                        case attemptToFill config rest ([ ( topping, count ) ] :: semipies) of
-                            Just asNewPie ->
-                                Just asNewPie
-
-                            Nothing ->
-                                if count > config.slicesPerPart then
-                                    let
-                                        sortedCountsWithSplit =
-                                            rest
-                                                |> insertToSorted ( topping, config.slicesPerPart )
-                                                |> insertToSorted ( topping, count - config.slicesPerPart )
-                                    in
-                                        attemptToFill config sortedCountsWithSplit semipies
-                                else
-                                    Nothing
+            biggestPair :: rest ->
+                Nothing
+                    |> orTry (\_ -> tryFittingIn config biggestPair rest semipies)
+                    |> orTry (\_ -> tryAsNewPie config biggestPair rest semipies)
+                    |> orTry (\_ -> trySplitting config biggestPair rest semipies)
 
 
-fitPairInPies : Int -> Pair -> List (List Pair) -> Maybe (List (List Pair))
-fitPairInPies slicesPerPie ( topping, count ) sortedSemipies =
+orTry : (() -> Maybe a) -> Maybe a -> Maybe a
+orTry newTry previousTry =
+    if previousTry == Nothing then
+        newTry ()
+    else
+        previousTry
+
+
+maybeFitInPies : Int -> Pair -> List Pie -> Maybe (List (List Pair))
+maybeFitInPies slicesPerPie ( topping, count ) sortedSemipies =
     case sortedSemipies of
         [] ->
             Nothing
 
         biggestPie :: rest ->
             if sliceCount biggestPie + count > slicesPerPie then
-                fitPairInPies slicesPerPie ( topping, count ) rest
+                maybeFitInPies slicesPerPie ( topping, count ) rest
                     |> Maybe.map ((::) biggestPie)
             else
                 (( topping, count ) :: biggestPie) :: rest |> Just
+
+
+tryFittingIn : Config -> Pair -> List Pair -> List Pie -> Maybe (List Pie)
+tryFittingIn config pair rest semipies =
+    maybeFitInPies (config.slicesPerPart * config.partsPerPie)
+        pair
+        (List.sortBy (negate << sliceCount) semipies)
+        |> Maybe.andThen (attemptToFill config rest)
+
+
+tryAsNewPie : Config -> Pair -> List Pair -> List Pie -> Maybe (List Pie)
+tryAsNewPie config pair rest semipies =
+    attemptToFill config rest ([ pair ] :: semipies)
+
+
+trySplitting : Config -> Pair -> List Pair -> List Pie -> Maybe (List Pie)
+trySplitting config ( topping, count ) rest semipies =
+    if count > config.slicesPerPart then
+        let
+            newPairs =
+                rest
+                    |> insertToSorted ( topping, config.slicesPerPart )
+                    |> insertToSorted ( topping, count - config.slicesPerPart )
+        in
+            attemptToFill config newPairs semipies
+    else
+        Nothing
 
 
 
