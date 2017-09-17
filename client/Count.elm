@@ -64,7 +64,14 @@ map2 : (Int -> Int -> Int) -> Count key comparable -> Count key comparable -> Co
 map2 op (Count opt1) (Count opt2) =
     let
         merger key n m newDict =
-            Dict.insert key (op n m) newDict
+            let
+                val =
+                    op n m
+            in
+                if val == 0 then
+                    newDict
+                else
+                    Dict.insert key val newDict
     in
         Dict.merge
             (\k n dict -> merger k n 0 dict)
