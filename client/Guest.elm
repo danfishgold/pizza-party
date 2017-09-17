@@ -25,6 +25,7 @@ type Msg
     = EditName String
     | SetGroupState (Socket.State Group)
     | AddSliceCount Int Topping
+    | SetSliceCount Int Topping
     | Noop
 
 
@@ -50,8 +51,24 @@ subscriptions model =
         Joining ->
             Socket.toppingListFromHost (Socket.mapState Group >> SetGroupState)
 
+        Joined _ ->
+            Socket.sliceTripletsFromGuest (onTripletUpdate model)
+
         _ ->
             Sub.none
+
+
+onTripletUpdate : Model -> Maybe ( User, Topping, Int ) -> Msg
+onTripletUpdate model triplet =
+    case triplet of
+        Just ( user, topping, count ) ->
+            if user == model.user then
+                SetSliceCount count topping
+            else
+                Noop
+
+        _ ->
+            Noop
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -80,6 +97,11 @@ update msg model =
                 ( { model | counts = newCounts }
                 , Socket.broadcastSliceTriplet model.user topping newValue
                 )
+
+        SetSliceCount newValue topping ->
+            ( { model | counts = model.counts |> Count.set topping newValue }
+            , Cmd.none
+            )
 
         Noop ->
             ( model, Cmd.none )
