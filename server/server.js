@@ -1,11 +1,10 @@
-var app = require('express')()
-var server = require('http').Server(app)
-var io = require('socket.io')(server)
+const app = require('express')()
+const server = require('http').Server(app)
+const io = require('socket.io')(server)
 
 server.listen(5000)
 
 let hostId
-
 
 io.on('connection', socket => {
   
