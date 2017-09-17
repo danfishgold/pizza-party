@@ -4,16 +4,17 @@ import Html exposing (Html, program, div, button, h1, h2, span, text)
 import Html.Events exposing (onClick)
 import Config exposing (Config)
 import Guest exposing (userView)
-import Preferences as Pref exposing (Preferences)
 import User exposing (User)
 import Topping exposing (Topping)
 import Diagram
 import Socket exposing (State(..))
+import Dict exposing (Dict)
+import Count
 
 
 type alias Model =
     { config : Config
-    , userPrefs : Preferences
+    , userCounts : Dict String Topping.Count
     , toppings : List Topping
     , users : List User
     , socket : Socket.State ()
@@ -34,7 +35,7 @@ initialModel =
         { slicesPerPart = 2
         , partsPerPie = 4
         }
-    , userPrefs = Pref.empty
+    , userCounts = Dict.empty
     , toppings = Topping.all
     , users = []
     , socket = NotRequested
@@ -44,8 +45,7 @@ initialModel =
 fake : Model
 fake =
     { initialModel
-        | userPrefs = Pref.empty
-        , users = [ User "Fake1", User "Fake2" ]
+        | users = [ User "Fake1", User "Fake2" ]
         , socket = Joined ()
     }
 
@@ -78,19 +78,19 @@ update msg model =
     case msg of
         AddSliceCount delta user topping ->
             let
-                ( newPrefs, newValue ) =
-                    model.userPrefs |> Pref.add user topping delta
+                ( newCount, newValue ) =
+                    model.userCounts |> Dict.get user.name |> Maybe.withDefault Topping.emptyCount |> Count.add topping delta
             in
-                ( { model | userPrefs = newPrefs }
+                ( { model | userCounts = Dict.insert user.name newCount model.userCounts }
                 , Socket.broadcastSliceTriplet user topping newValue
                 )
 
         SetSliceCount count user topping ->
             let
-                newPrefs =
-                    model.userPrefs |> Pref.set user topping count
+                newCounts =
+                    model.userCounts |> Dict.update user.name (Maybe.withDefault Topping.emptyCount >> Count.set topping count >> Just)
             in
-                ( { model | userPrefs = newPrefs }, Cmd.none )
+                ( { model | userCounts = newCounts }, Cmd.none )
 
         SendToppingList user ->
             if List.member user model.users then
@@ -134,37 +134,45 @@ view model =
 
         Joined _ ->
             div []
-                [ Pref.toToppingCount model.userPrefs
+                [ model.userCounts
+                    |> Dict.values
+                    |> Topping.sumCounts
                     |> Diagram.pies 100 model.config
                     |> div []
                 , if List.isEmpty model.users then
                     text "But nobody came."
                   else
-                    usersView (AddSliceCount -1) (AddSliceCount 1) Topping.all model.userPrefs model.users
+                    usersView (AddSliceCount -1) (AddSliceCount 1) Topping.all model.users model.userCounts
                 ]
 
         Denied error ->
             text ("Error: " ++ error)
 
 
-usersView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> Preferences -> List User -> Html msg
-usersView decrease increase toppings prefs users =
+usersView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> List User -> Dict String Topping.Count -> Html msg
+usersView decrease increase toppings users userCounts =
     div []
         [ h1 [] [ text "Guests" ]
         , users
-            |> List.map (userView decrease increase toppings prefs)
+            |> List.map (userView decrease increase toppings userCounts)
             |> div
                 []
         ]
 
 
-userView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> Preferences -> User -> Html msg
-userView decrease increase toppings prefs user =
+userView : (User -> Topping -> msg) -> (User -> Topping -> msg) -> List Topping -> Dict String Topping.Count -> User -> Html msg
+userView decrease increase toppings userCounts user =
     let
         value topping =
-            (Pref.get user topping prefs |> Maybe.withDefault 0)
+            userCounts
+                |> Dict.get user.name
+                |> Maybe.withDefault Topping.emptyCount
+                |> Count.get topping
     in
         div []
             [ h2 [] [ text user.name ]
-            , Guest.userView (decrease user) (increase user) value toppings
+            , Guest.userView (decrease user)
+                (increase user)
+                value
+                toppings
             ]

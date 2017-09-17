@@ -12,6 +12,7 @@ module Topping
         , countFromList
         , countFromKeyList
         , emptyCount
+        , sumCounts
         )
 
 import Json.Decode as Decode exposing (Decoder)
@@ -85,3 +86,8 @@ countFromKeyList =
 emptyCount : Count
 emptyCount =
     Count.empty key fromKey
+
+
+sumCounts : List Count -> Count
+sumCounts counts =
+    List.foldl (Count.map2 (+)) emptyCount counts

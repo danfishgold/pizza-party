@@ -25,14 +25,11 @@ setDict newDict (Count c) =
     Count { c | dict = newDict }
 
 
-subtract : Count key comparable -> Count key comparable -> Count key comparable
-subtract (Count opt1) (Count opt2) =
+map2 : (Int -> Int -> Int) -> Count key comparable -> Count key comparable -> Count key comparable
+map2 op (Count opt1) (Count opt2) =
     let
-        merger key n m diffDict =
-            if n == m then
-                diffDict
-            else
-                Dict.insert key (n - m) diffDict
+        merger key n m newDict =
+            Dict.insert key (op n m) newDict
     in
         Dict.merge
             (\k n dict -> merger k n 0 dict)
