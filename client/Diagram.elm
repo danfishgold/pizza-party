@@ -29,12 +29,6 @@ pies radius config toppingCount =
                     ++ separated.leftovers
                     |> Topping.countFromList
                 )
-
-        remainderLeftovers =
-            Debug.log "remainder leftovers" remainder.leftovers
-
-        remainderRemaining =
-            Debug.log "remainder remaining" remainder.remaining
     in
         separated.pies
             ++ remainder.pies
