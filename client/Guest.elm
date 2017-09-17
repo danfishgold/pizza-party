@@ -62,7 +62,7 @@ onTripletUpdate : Model -> Maybe ( User, Topping, Int ) -> Msg
 onTripletUpdate model triplet =
     case triplet of
         Just ( user, topping, count ) ->
-            if user == model.user then
+            if user.name == model.user.name then
                 SetSliceCount count topping
             else
                 Noop
