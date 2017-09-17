@@ -27,10 +27,18 @@ pies radius config toppingCount =
                 , partsPerPie = slicesPerPie
                 }
                 (Count.join separated.remaining separated.leftovers)
+
+        remainderRemaining =
+            case Count.toList remainder.remaining of
+                [] ->
+                    []
+
+                pairs ->
+                    [ pairs ]
     in
         separated.pies
             ++ remainder.pies
-            ++ [ Count.toList remainder.remaining ]
+            ++ remainderRemaining
             |> List.map (pie radius slicesPerPie)
 
 
