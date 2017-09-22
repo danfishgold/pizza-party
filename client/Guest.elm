@@ -132,9 +132,7 @@ view model =
                     ]
                     []
                 , button
-                    [ onClick <| SetGroupState Joining
-                    , disabled (String.isEmpty model.user.name)
-                    ]
+                    [ disabled (String.isEmpty model.user.name) ]
                     [ text "Join" ]
                 ]
 
