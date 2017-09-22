@@ -1,8 +1,16 @@
-const app = require('express')()
+const express = require('express')
+const app = express()
 const server = require('http').Server(app)
 const io = require('socket.io')(server)
 
-server.listen(5000)
+app.use(express.static('../client'))
+
+app.get("/", function (request, response) {
+  response.sendFile(__dirname + '../client/index.html')
+})
+
+
+server.listen(process.env.PORT)
 
 let hostId
 
