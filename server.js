@@ -3,10 +3,10 @@ const app = express()
 const server = require('http').Server(app)
 const io = require('socket.io')(server)
 
-app.use(express.static('../client'))
+app.use(express.static('client'))
 
 app.get("/", function (request, response) {
-  response.sendFile(__dirname + '../client/index.html')
+  response.sendFile(__dirname + '/client/index.html')
 })
 
 
