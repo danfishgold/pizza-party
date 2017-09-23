@@ -9,8 +9,10 @@ app.get("/", function (request, response) {
   response.sendFile(__dirname + '/client/index.html')
 })
 
-
-server.listen(process.env.PORT)
+const port = process.env.PORT | 5000
+server.listen(port, () => {
+  console.log(`Listening on port ${port}`)
+})
 
 let hostId
 
