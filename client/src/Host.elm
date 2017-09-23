@@ -16,6 +16,7 @@ import Count
 type alias Model =
     { config : Config
     , userCounts : Dict String Topping.Count
+    , hostCount : Topping.Count
     , toppings : List Topping
     , users : List User
     , socket : Socket.State ()
@@ -24,6 +25,7 @@ type alias Model =
 
 type Msg
     = AddSliceCount User Topping Int
+    | AddHostSliceCount Topping Int
     | SetSliceCount User Topping Int
     | SendToppingList User
     | SetSocketState (Socket.State ())
@@ -37,6 +39,7 @@ initialModel =
         , partsPerPie = 4
         }
     , userCounts = Dict.empty
+    , hostCount = Topping.emptyCount
     , toppings = Topping.all
     , users = []
     , socket = NotRequested
@@ -95,6 +98,16 @@ update msg model =
                 , Socket.broadcastSliceTriplet user topping newValue
                 )
 
+        AddHostSliceCount topping delta ->
+            ( { model
+                | hostCount =
+                    model.hostCount
+                        |> Count.add topping delta
+                        |> Tuple.first
+              }
+            , Cmd.none
+            )
+
         SetSliceCount user topping count ->
             let
                 newCounts =
@@ -152,9 +165,11 @@ view model =
             div []
                 [ model.userCounts
                     |> Dict.values
+                    |> (::) model.hostCount
                     |> Topping.concatCounts
                     |> Diagram.pies 100 model.config
                     |> div []
+                , Guest.userView AddHostSliceCount model.hostCount model.toppings
                 , if List.isEmpty model.users then
                     div []
                         [ p [] [ text "But nobody came." ]
@@ -165,17 +180,22 @@ view model =
                             ]
                         ]
                   else
-                    div []
-                        [ h1 [] [ text "Guests" ]
-                        , model.users
-                            |> List.map (userView AddSliceCount model.toppings model.userCounts)
-                            |> div
-                                []
-                        ]
+                    guestsView model.users model.toppings model.userCounts
                 ]
 
         Denied error ->
             text ("Error: " ++ error)
+
+
+guestsView : List User -> List Topping -> Dict String Topping.Count -> Html Msg
+guestsView users toppings userCounts =
+    div []
+        [ h1 [] [ text "Guests" ]
+        , users
+            |> List.map (userView AddSliceCount toppings userCounts)
+            |> div
+                []
+        ]
 
 
 userView :
