@@ -1,12 +1,16 @@
 const app = Elm.Main.fullscreen()
 
-const socket = io.connect('/')
+const socket = io.connect('http://localhost:5000')
 
 
 // OUTGOING
 
-app.ports.connectAsHost.subscribe(data => {
-  socket.emit('connect-as-host', data)
+app.ports.createRoom.subscribe(data => {
+  socket.emit('create-room', data)
+})
+
+app.ports.joinRoom.subscribe(data => {
+  socket.emit('join-room', data)
 })
 
 app.ports.sendTriplet.subscribe(data => {
@@ -24,8 +28,12 @@ app.ports.sendToppingListOrError.subscribe(data => {
 
 // INCOMING
 
-socket.on('connect-as-host-response', data => {
-  app.ports.connectAsHostResponse.send(data)
+socket.on('create-room-response', data => {
+  app.ports.createRoomResponse.send(data)
+})
+
+socket.on('join-room-response', data => {
+  app.ports.joinRoomResponse.send(data)
 })
 
 socket.on('triplet', data => {

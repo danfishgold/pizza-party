@@ -1,9 +1,9 @@
 port module Socket
     exposing
-        ( State(..)
-        , mapState
-        , requestHostConnectionFromServer
-        , hostConnectionResponseFromServer
+        ( createRoomAsHost
+        , createRoomResponseFromServer
+        , findRoomAsGuest
+        , roomFoundResponseFromServer
         , broadcastSliceTriplet
         , sliceTripletsFromGuest
         , requestToppingsListFromHost
@@ -16,43 +16,7 @@ import Json.Encode as Encode exposing (Value)
 import Json.Decode as Decode exposing (Decoder)
 import User exposing (User)
 import Topping exposing (Topping)
-
-
--- STATE
-
-
-type State a
-    = NotRequested
-    | Joining
-    | Joined a
-    | Denied String
-
-
-stateFromResult : Result String a -> State a
-stateFromResult result =
-    case result of
-        Err error ->
-            Denied error
-
-        Ok a ->
-            Joined a
-
-
-mapState : (a -> b) -> State a -> State b
-mapState fn state =
-    case state of
-        NotRequested ->
-            NotRequested
-
-        Joining ->
-            Joining
-
-        Joined a ->
-            Joined (fn a)
-
-        Denied err ->
-            Denied err
-
+import RoomId exposing (RoomId)
 
 
 -- DECODERS AND ENCODERS
@@ -86,30 +50,53 @@ decodeResult decoder value =
 
 
 
--- HOST CONNECTION
+-- CONNECTIONS
 
 
-port connectAsHost : () -> Cmd msg
+port createRoom : () -> Cmd msg
 
 
-port connectAsHostResponse : (Value -> msg) -> Sub msg
+port createRoomResponse : (Value -> msg) -> Sub msg
 
 
-requestHostConnectionFromServer : Cmd msg
-requestHostConnectionFromServer =
-    connectAsHost ()
+port joinRoom : Value -> Cmd msg
 
 
-hostConnectionResponseFromServer : (State () -> msg) -> Sub msg
-hostConnectionResponseFromServer toMsg =
-    connectAsHostResponse
+port joinRoomResponse : (Value -> msg) -> Sub msg
+
+
+createRoomAsHost : Cmd msg
+createRoomAsHost =
+    createRoom ()
+
+
+createRoomResponseFromServer : (Result String RoomId -> msg) -> Sub msg
+createRoomResponseFromServer toMsg =
+    createRoomResponse
         (decodeResult
             (Decode.oneOf
-                [ Decode.field "ok" (Decode.succeed ()) |> Decode.map Ok
+                [ Decode.field "ok" (Decode.field "roomId" RoomId.decoder) |> Decode.map Ok
                 , Decode.field "error" Decode.string |> Decode.map Err
                 ]
             )
-            >> stateFromResult
+            >> toMsg
+        )
+
+
+findRoomAsGuest : RoomId -> Cmd msg
+findRoomAsGuest roomId =
+    joinRoom (RoomId.encode roomId)
+
+
+roomFoundResponseFromServer : (Result String RoomId -> msg) -> Sub msg
+roomFoundResponseFromServer toMsg =
+    joinRoomResponse
+        (decodeResult
+            (Decode.oneOf
+                [ Decode.field "ok" RoomId.decoder |> Decode.map Ok
+                , Decode.field "error" Decode.string |> Decode.map Err
+                ]
+            )
             >> toMsg
         )
 
@@ -183,7 +170,7 @@ sendToppingListOrErrorToGuest result =
                 |> sendToppingListOrError
 
 
-toppingListFromHost : (State (List Topping) -> msg) -> Sub msg
+toppingListFromHost : (Result String (List Topping) -> msg) -> Sub msg
 toppingListFromHost toMsg =
     receiveToppingList
         (decodeResult
@@ -192,6 +179,5 @@ toppingListFromHost toMsg =
                 , Decode.field "error" Decode.string |> Decode.map Err
                 ]
             )
-            >> stateFromResult
             >> toMsg
         )

@@ -7,8 +7,10 @@ import Config exposing (Config)
 import Guest exposing (userView)
 import User exposing (User)
 import Topping exposing (Topping)
+import RoomId exposing (RoomId)
 import Diagram
-import Socket exposing (State(..))
+import Socket
+import Stage exposing (Stage(..))
 import Dict exposing (Dict)
 import Count
 
@@ -19,16 +21,17 @@ type alias Model =
     , hostCount : Topping.Count
     , toppings : List Topping
     , users : List User
-    , socket : Socket.State ()
+    , room : Stage () RoomId
     }
 
 
 type Msg
-    = AddSliceCount User Topping Int
+    = StartRoom
+    | AddSliceCount User Topping Int
     | AddHostSliceCount Topping Int
     | SetSliceCount User Topping Int
     | SendToppingList User
-    | SetSocketState (Socket.State ())
+    | SetSocketRoom (Stage () RoomId)
     | Noop
 
 
@@ -42,7 +45,7 @@ initialModel =
     , hostCount = Topping.emptyCount
     , toppings = Topping.all
     , users = []
-    , socket = NotRequested
+    , room = Editing ()
     }
 
 
@@ -50,20 +53,24 @@ fake : Model
 fake =
     { initialModel
         | users = [ User "Fake1", User "Fake2" ]
-        , socket = Joined ()
+        , room = Success (RoomId.fromString "1")
     }
+
+
+
+-- applyResult : (extra -> input -> output) -> Stage input output -> Result String extra -> Stage input output
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.socket of
-        NotRequested ->
+    case model.room of
+        Editing _ ->
             Sub.none
 
-        Joining ->
-            Socket.hostConnectionResponseFromServer SetSocketState
+        Waiting _ ->
+            Socket.createRoomResponseFromServer (Stage.applyResult always model.room >> SetSocketRoom)
 
-        Joined () ->
+        Success _ ->
             Sub.batch
                 [ Socket.sliceTripletsFromGuest
                     (Maybe.map (\( u, t, n ) -> SetSliceCount u t n)
@@ -76,13 +83,21 @@ subscriptions model =
                     )
                 ]
 
-        Denied _ ->
+        Failure _ _ ->
             Sub.none
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        StartRoom ->
+            case model.room of
+                Editing _ ->
+                    ( { model | room = Waiting () }, Socket.createRoomAsHost )
+
+                _ ->
+                    ( model, Cmd.none )
+
         AddSliceCount user topping delta ->
             let
                 ( newCount, newValue ) =
@@ -130,17 +145,8 @@ update msg model =
                 , Socket.sendToppingListOrErrorToGuest (Ok model.toppings)
                 )
 
-        SetSocketState state ->
-            let
-                command =
-                    case state of
-                        Joining ->
-                            Socket.requestHostConnectionFromServer
-
-                        _ ->
-                            Cmd.none
-            in
-                ( { model | socket = state }, command )
+        SetSocketRoom room ->
+            ( { model | room = room }, Cmd.none )
 
         Noop ->
             ( model, Cmd.none )
@@ -152,18 +158,20 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    case model.socket of
-        NotRequested ->
+    case model.room of
+        Editing _ ->
             div []
-                [ button [ onClick (SetSocketState Joining) ] [ text "Start" ]
+                [ button [ onClick StartRoom ] [ text "Start" ]
                 ]
 
-        Joining ->
+        Waiting _ ->
             text "Setting up..."
 
-        Joined _ ->
+        Success roomId ->
             div []
-                [ model.userCounts
+                [ text "room id: "
+                , text <| RoomId.toString roomId
+                , model.userCounts
                     |> Dict.values
                     |> (::) model.hostCount
                     |> Topping.concatCounts
@@ -183,7 +191,7 @@ view model =
                     guestsView model.users model.toppings model.userCounts
                 ]
 
-        Denied error ->
+        Failure _ error ->
             text ("Error: " ++ error)
 
 

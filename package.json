@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "express": "^4.15.4",
+    "lowdb": "^1.0.0",
     "socket.io": "^2.0.3"
   },
   "engines": {
@@ -25,4 +26,3 @@
     "pizza"
   ]
 }
-

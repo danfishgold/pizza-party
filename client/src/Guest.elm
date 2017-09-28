@@ -6,25 +6,42 @@ import Html.Events exposing (onClick, onInput)
 import Topping exposing (Topping)
 import Count
 import User exposing (User)
-import Socket exposing (State(..))
+import RoomId exposing (RoomId)
+import Socket
 import Json.Decode
+import Stage exposing (Stage(..))
+
+
+type State
+    = RoomFinding (Stage RoomId RoomId)
+    | RoomJoining (Stage PartialGroup Group)
 
 
 type alias Model =
-    { user : User
-    , group : Socket.State Group
+    { state : State
     , counts : Topping.Count
     }
 
 
+type alias PartialGroup =
+    { roomId : RoomId
+    , user : User
+    }
+
+
 type alias Group =
-    { toppings : List Topping
+    { roomId : RoomId
+    , user : User
+    , toppings : List Topping
     }
 
 
 type Msg
-    = EditName String
-    | SetGroupState (Socket.State Group)
+    = EditRoomId RoomId
+    | FindRoom
+    | EditName String
+    | JoinRoom
+    | SetState State
     | AddSliceCount Topping Int
     | SetSliceCount Topping Int
     | Noop
@@ -32,8 +49,7 @@ type Msg
 
 initialModel : Model
 initialModel =
-    { user = { name = "" }
-    , group = NotRequested
+    { state = RoomFinding <| Editing <| RoomId.fromString ""
     , counts = Topping.emptyCount
     }
 
@@ -41,18 +57,43 @@ initialModel =
 fake : Model
 fake =
     { initialModel
-        | user = { name = "fake" }
-        , group = Joined { toppings = Topping.all }
+        | state =
+            RoomJoining <|
+                Success
+                    { roomId = RoomId.fromString "1"
+                    , user = { name = "fake" }
+                    , toppings = Topping.all
+                    }
     }
+
+
+joinResult : Result a a -> a
+joinResult res =
+    case res of
+        Ok a ->
+            a
+
+        Err a ->
+            a
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.group of
-        Joining ->
-            Socket.toppingListFromHost (Socket.mapState Group >> SetGroupState)
+    case model.state of
+        RoomFinding ((Waiting roomId) as stage) ->
+            Socket.roomFoundResponseFromServer
+                (Stage.applyResult always stage >> RoomFinding >> SetState)
 
-        Joined _ ->
+        RoomJoining ((Waiting partial) as stage) ->
+            Socket.toppingListFromHost
+                (Stage.applyResult
+                    (\toppings { roomId, user } -> { roomId = roomId, user = user, toppings = toppings })
+                    stage
+                    >> RoomJoining
+                    >> SetState
+                )
+
+        RoomJoining (Success group) ->
             Socket.sliceTripletsFromGuest (onTripletUpdate model)
 
         _ ->
@@ -61,9 +102,9 @@ subscriptions model =
 
 onTripletUpdate : Model -> Maybe ( User, Topping, Int ) -> Msg
 onTripletUpdate model triplet =
-    case triplet of
-        Just ( user, topping, count ) ->
-            if user.name == model.user.name then
+    case ( model.state, triplet ) of
+        ( RoomJoining (Success { user }), Just ( updatedUser, topping, count ) ) ->
+            if user.name == updatedUser.name then
                 SetSliceCount topping count
             else
                 Noop
@@ -72,40 +113,73 @@ onTripletUpdate model triplet =
             Noop
 
 
+editName : String -> PartialGroup -> PartialGroup
+editName name group =
+    { group | user = { name = name } }
+
+
+initialPartial : RoomId -> PartialGroup
+initialPartial roomId =
+    { roomId = roomId, user = { name = "" } }
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        EditName name ->
-            ( { model | user = { name = name } }, Cmd.none )
+    case ( Debug.log "message" msg, model.state ) of
+        ( SetState (RoomFinding (Success roomId)), _ ) ->
+            roomId
+                |> initialPartial
+                |> Editing
+                |> RoomJoining
+                |> SetState
+                |> flip update model
 
-        SetGroupState state ->
-            let
-                command =
-                    case state of
-                        Joining ->
-                            Socket.requestToppingsListFromHost model.user
+        ( SetState state, _ ) ->
+            ( { model | state = state }, Cmd.none )
 
-                        _ ->
-                            Cmd.none
-            in
-                ( { model | group = state }, command )
+        ( Noop, _ ) ->
+            ( model, Cmd.none )
 
-        AddSliceCount topping delta ->
+        ( EditRoomId roomId, RoomFinding stage ) ->
+            ( { model | state = RoomFinding (Stage.update always roomId stage) }
+            , Cmd.none
+            )
+
+        ( FindRoom, RoomFinding (Editing roomId) ) ->
+            ( { model | state = RoomFinding (Waiting roomId) }
+            , Socket.findRoomAsGuest roomId
+            )
+
+        ( EditName name, RoomJoining stage ) ->
+            ( { model | state = RoomJoining (Stage.update editName name stage) }
+            , Cmd.none
+            )
+
+        ( JoinRoom, RoomJoining (Editing partial) ) ->
+            ( { model | state = RoomJoining (Waiting partial) }
+            , Socket.requestToppingsListFromHost partial.user
+            )
+
+        ( AddSliceCount topping delta, RoomJoining (Success { user }) ) ->
             let
                 ( newCounts, newValue ) =
                     model.counts |> Count.add topping delta
             in
                 ( { model | counts = newCounts }
-                , Socket.broadcastSliceTriplet model.user topping newValue
+                , Socket.broadcastSliceTriplet user topping newValue
                 )
 
-        SetSliceCount topping newValue ->
+        ( SetSliceCount topping newValue, RoomJoining (Success _) ) ->
             ( { model | counts = model.counts |> Count.set topping newValue }
             , Cmd.none
             )
 
-        Noop ->
-            ( model, Cmd.none )
+        _ ->
+            Debug.crash <|
+                "got message "
+                    ++ toString msg
+                    ++ " with model "
+                    ++ toString model
 
 
 
@@ -121,36 +195,105 @@ onSubmit msg =
 
 view : Model -> Html Msg
 view model =
-    case model.group of
-        NotRequested ->
+    case model.state of
+        RoomFinding stage ->
+            findingView stage
+
+        RoomJoining stage ->
+            joiningView stage model.counts
+
+
+findingView : Stage RoomId RoomId -> Html Msg
+findingView stage =
+    case Stage.data stage of
+        Stage.In roomId ->
+            stageForm "Enter the room number"
+                "Find Room"
+                (RoomId.toString)
+                stage
+                (RoomId.fromString >> EditRoomId)
+                FindRoom
+
+        Stage.Out _ ->
+            Debug.crash "Forbidden state"
+
+
+joiningView : Stage PartialGroup Group -> Topping.Count -> Html Msg
+joiningView stage counts =
+    case Stage.data stage of
+        Stage.In _ ->
+            stageForm "Enter your username"
+                "Join"
+                (.user >> .name)
+                stage
+                EditName
+                JoinRoom
+
+        Stage.Out { toppings } ->
+            userView AddSliceCount counts toppings
+
+
+stageForm : String -> String -> (input -> String) -> Stage input output -> (String -> msg) -> msg -> Html msg
+stageForm prompt buttonText inputToString stage onInput_ onSubmit_ =
+    case Stage.data stage of
+        Stage.In inputValue ->
             form
-                [ onSubmit <| SetGroupState Joining ]
-                [ text "Enter your name"
+                [ onSubmit onSubmit_ ]
+                [ text prompt
                 , input
-                    [ onInput EditName
-                    , value model.user.name
+                    [ onInput onInput_
+                    , value <| inputToString inputValue
+                    , disabled <| not (Stage.canEdit stage)
                     ]
                     []
                 , button
-                    [ disabled (String.isEmpty model.user.name) ]
-                    [ text "Join" ]
-                ]
-
-        Joining ->
-            div []
-                [ p [] [ text "Joining..." ]
-                , p []
-                    [ text "(Make sure the host is on "
-                    , a [ href "https://pizzaparty.glitch.me" ] [ text "pizzaparty.glitch.me" ]
-                    , text ", otherwise this won't work.)"
+                    [ disabled <| String.isEmpty (inputToString inputValue) || not (Stage.canSubmit stage) ]
+                    [ text <|
+                        if Stage.waiting stage then
+                            "Fetching..."
+                        else
+                            buttonText
                     ]
+                , Stage.error stage
+                    |> Maybe.map text
+                    |> Maybe.withDefault (text "")
                 ]
 
-        Joined { toppings } ->
-            userView AddSliceCount model.counts toppings
+        Stage.Out _ ->
+            Debug.crash "Tried to show form on Success state"
 
-        Denied error ->
-            text ("Error: " ++ error)
+
+
+--     form
+--         [ onSubmit FindRoom ]
+--         [ text "Enter your name"
+--         , input
+--             [ onInput EditName
+--               -- , value model.user.name
+--             ]
+--             []
+--         , text "Enter the room ID"
+--         , input
+--             [ onInput (RoomId.fromString >> EditRoomId)
+--               -- , value (RoomId.toString model.roomId)
+--             ]
+--             []
+--         , button
+--             [--disabled (String.isEmpty model.user.name)
+--             ]
+--             [ text "Join" ]
+--         ]
+-- RoomJoining _ ->
+--     div []
+--         [ p [] [ text "Joining..." ]
+--         , p []
+--             [ text "(Make sure the host is on "
+--             , a [ href "https://pizzaparty.glitch.me" ] [ text "pizzaparty.glitch.me" ]
+--             , text ", otherwise this won't work.)"
+--             ]
+--         ]
+-- DeniedAccess _ error ->
+--     text ("Error: " ++ error)
 
 
 userView : (Topping -> Int -> msg) -> Topping.Count -> List Topping -> Html msg
