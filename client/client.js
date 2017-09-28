@@ -1,6 +1,6 @@
 const app = Elm.Main.fullscreen()
 
-const socket = io.connect('http://localhost:5000')
+const socket = io.connect('/')
 
 
 // OUTGOING

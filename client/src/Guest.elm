@@ -125,7 +125,7 @@ initialPartial roomId =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case ( Debug.log "message" msg, model.state ) of
+    case ( msg, model.state ) of
         ( SetState (RoomFinding (Success roomId)), _ ) ->
             roomId
                 |> initialPartial
