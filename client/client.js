@@ -47,3 +47,11 @@ socket.on('request-topping-list', data => {
 socket.on('topping-list', data => {
   app.ports.receiveToppingList.send(data)
 })
+
+socket.on('guest-left', data => {
+  app.ports.receiveGuestLeft.send(data)
+})
+
+socket.on('host-left', data => {
+  app.ports.receiveHostLeft.send(data)
+})

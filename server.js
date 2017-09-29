@@ -58,26 +58,36 @@ function createRandomRoomWithHost(socket) {
 }
 
 function joinRoomAndAddHandlers(socket, roomId) {
-  const roomName = `room-${roomId}`
-  socket.join(roomName)
-  const hostId = hostOfRoom(roomId)
+  const room = {
+    id: roomId,
+    name: `room-${roomId}`,
+    hostId: hostOfRoom(roomId)
+  }
+  socket.join(room.name)
 
   socket.on('request-topping-list', data => {
-    socket.to(hostId).emit('request-topping-list', data)
+    room.user = data
+    socket.to(room.hostId).emit('request-topping-list', data)
   })
 
   socket.on('topping-list', data => {
-    socket.to(roomName).emit('topping-list', data)
+    socket.to(room.name).emit('topping-list', data)
   })
 
   socket.on('triplet', data => {
-    socket.to(roomName).emit('triplet', data)
+    socket.to(room.name).emit('triplet', data)
   })
 
   socket.on('disconnect', () => {
-    db.get('sessions')
-      .remove({ hostId: socket.id })
-      .write()
+    if (room.hostId == socket.id) {
+      socket.to(room.name).emit('host-left')
+      db.get('sessions')
+        .remove({ roomId: room.id })
+        .write()
+    } else {
+      socket.to(room.hostId).emit('guest-left', room.user)
+    }
+    
   })
 }
 
@@ -85,7 +95,6 @@ function joinRoomAndAddHandlers(socket, roomId) {
 io.on('connection', socket => {
 
   socket.on('create-room', () => {
-    
     if (!alreadyHost(socket)) {
       const roomId = createRandomRoomWithHost(socket)
       joinRoomAndAddHandlers(socket, roomId)

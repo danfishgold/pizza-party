@@ -10,6 +10,8 @@ port module Socket
         , toppingListRequestFromGuest
         , sendToppingListOrErrorToGuest
         , toppingListFromHost
+        , guestDisconnectionsFromServer
+        , hostDisconnectionsFromServer
         )
 
 import Json.Encode as Encode exposing (Value)
@@ -181,3 +183,28 @@ toppingListFromHost toMsg =
             )
             >> toMsg
         )
+
+
+
+-- DISCONNECTIONS
+
+
+port receiveGuestLeft : (Value -> msg) -> Sub msg
+
+
+port receiveHostLeft : (Value -> msg) -> Sub msg
+
+
+guestDisconnectionsFromServer : (Maybe User -> msg) -> Sub msg
+guestDisconnectionsFromServer toMsg =
+    receiveGuestLeft
+        (Decode.decodeValue User.decoder
+            >> Result.mapError (Debug.log "error on guest disconnection")
+            >> Result.toMaybe
+            >> toMsg
+        )
+
+
+hostDisconnectionsFromServer : msg -> Sub msg
+hostDisconnectionsFromServer toMsg =
+    receiveHostLeft (always toMsg)

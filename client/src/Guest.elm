@@ -44,6 +44,7 @@ type Msg
     | SetState State
     | AddSliceCount Topping Int
     | SetSliceCount Topping Int
+    | HostDisconnected
     | Noop
 
 
@@ -94,7 +95,10 @@ subscriptions model =
                 )
 
         RoomJoining (Success group) ->
-            Socket.sliceTripletsFromGuest (onTripletUpdate model)
+            Sub.batch
+                [ Socket.sliceTripletsFromGuest (onTripletUpdate model)
+                , Socket.hostDisconnectionsFromServer HostDisconnected
+                ]
 
         _ ->
             Sub.none
@@ -173,6 +177,13 @@ update msg model =
             ( { model | counts = model.counts |> Count.set topping newValue }
             , Cmd.none
             )
+
+        ( HostDisconnected, RoomJoining _ ) ->
+            "The host disconnected :("
+                |> Failure (RoomId.fromString "")
+                |> RoomFinding
+                |> SetState
+                |> flip update model
 
         _ ->
             Debug.crash <|

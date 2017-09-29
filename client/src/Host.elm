@@ -32,6 +32,7 @@ type Msg
     | SetSliceCount User Topping Int
     | SendToppingList User
     | SetSocketRoom (Stage () RoomId)
+    | GuestDisconnected User
     | Noop
 
 
@@ -57,10 +58,6 @@ fake =
     }
 
 
-
--- applyResult : (extra -> input -> output) -> Stage input output -> Result String extra -> Stage input output
-
-
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.room of
@@ -68,7 +65,10 @@ subscriptions model =
             Sub.none
 
         Waiting _ ->
-            Socket.createRoomResponseFromServer (Stage.applyResult always model.room >> SetSocketRoom)
+            Socket.createRoomResponseFromServer
+                (Stage.applyResult always model.room
+                    >> SetSocketRoom
+                )
 
         Success _ ->
             Sub.batch
@@ -79,6 +79,10 @@ subscriptions model =
                 , Socket.toppingListRequestFromGuest
                     (Result.toMaybe
                         >> Maybe.map SendToppingList
+                        >> Maybe.withDefault Noop
+                    )
+                , Socket.guestDisconnectionsFromServer
+                    (Maybe.map GuestDisconnected
                         >> Maybe.withDefault Noop
                     )
                 ]
@@ -147,6 +151,14 @@ update msg model =
 
         SetSocketRoom room ->
             ( { model | room = room }, Cmd.none )
+
+        GuestDisconnected user ->
+            ( { model
+                | users = List.filter ((/=) user) model.users
+                , userCounts = Dict.remove user.name model.userCounts
+              }
+            , Cmd.none
+            )
 
         Noop ->
             ( model, Cmd.none )
