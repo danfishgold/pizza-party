@@ -78,6 +78,10 @@ function joinRoomAndAddHandlers(socket, roomId) {
     socket.to(room.name).emit('triplet', data)
   })
 
+  socket.on('kick-guest', data => {
+    socket.to(room.name).emit('kick-guest', data)
+  })
+
   socket.on('disconnect', () => {
     if (room.hostId == socket.id) {
       socket.to(room.name).emit('host-left')

@@ -25,6 +25,10 @@ app.ports.sendToppingListOrError.subscribe(data => {
   socket.emit('topping-list', data)
 })
 
+app.ports.sendKickGuest.subscribe(data => {
+  socket.emit('kick-guest', data)
+})
+
 
 // INCOMING
 
@@ -54,4 +58,8 @@ socket.on('guest-left', data => {
 
 socket.on('host-left', data => {
   app.ports.receiveHostLeft.send(data)
+})
+
+socket.on('kick-guest', data => {
+  app.ports.receiveKickGuest.send(data)
 })

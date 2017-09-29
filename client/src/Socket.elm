@@ -12,6 +12,8 @@ port module Socket
         , toppingListFromHost
         , guestDisconnectionsFromServer
         , hostDisconnectionsFromServer
+        , kickGuestAsHost
+        , kickedOutByHost
         )
 
 import Json.Encode as Encode exposing (Value)
@@ -208,3 +210,28 @@ guestDisconnectionsFromServer toMsg =
 hostDisconnectionsFromServer : msg -> Sub msg
 hostDisconnectionsFromServer toMsg =
     receiveHostLeft (always toMsg)
+
+
+
+-- KICKING OUT
+
+
+port sendKickGuest : Value -> Cmd msg
+
+
+port receiveKickGuest : (Value -> msg) -> Sub msg
+
+
+kickGuestAsHost : User -> Cmd msg
+kickGuestAsHost user =
+    sendKickGuest (User.encode user)
+
+
+kickedOutByHost : (Maybe User -> msg) -> Sub msg
+kickedOutByHost toMsg =
+    receiveKickGuest
+        (Decode.decodeValue User.decoder
+            >> Result.mapError (Debug.log "error on kicking out guest")
+            >> Result.toMaybe
+            >> toMsg
+        )

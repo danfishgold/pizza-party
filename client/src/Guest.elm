@@ -45,6 +45,7 @@ type Msg
     | AddSliceCount Topping Int
     | SetSliceCount Topping Int
     | HostDisconnected
+    | KickedOut User
     | Noop
 
 
@@ -98,6 +99,7 @@ subscriptions model =
             Sub.batch
                 [ Socket.sliceTripletsFromGuest (onTripletUpdate model)
                 , Socket.hostDisconnectionsFromServer HostDisconnected
+                , Socket.kickedOutByHost (Maybe.map KickedOut >> Maybe.withDefault Noop)
                 ]
 
         _ ->
@@ -184,6 +186,25 @@ update msg model =
                 |> RoomFinding
                 |> SetState
                 |> flip update model
+
+        ( KickedOut kickedOutUser, RoomJoining stage ) ->
+            let
+                user =
+                    case Stage.data stage of
+                        Stage.In { user } ->
+                            user
+
+                        Stage.Out { user } ->
+                            user
+            in
+                if kickedOutUser == user then
+                    "You were kicked out by the host"
+                        |> Failure (RoomId.fromString "")
+                        |> RoomFinding
+                        |> SetState
+                        |> flip update model
+                else
+                    ( model, Cmd.none )
 
         _ ->
             Debug.crash <|

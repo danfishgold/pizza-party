@@ -33,6 +33,7 @@ type Msg
     | SendToppingList User
     | SetSocketRoom (Stage () RoomId)
     | GuestDisconnected User
+    | KickOut User
     | Noop
 
 
@@ -128,16 +129,19 @@ update msg model =
             )
 
         SetSliceCount user topping count ->
-            let
-                newCounts =
-                    model.userCounts
-                        |> Dict.update user.name
-                            (Maybe.withDefault Topping.emptyCount
-                                >> Count.set topping count
-                                >> Just
-                            )
-            in
-                ( { model | userCounts = newCounts }, Cmd.none )
+            if List.member user model.users then
+                let
+                    newCounts =
+                        model.userCounts
+                            |> Dict.update user.name
+                                (Maybe.withDefault Topping.emptyCount
+                                    >> Count.set topping count
+                                    >> Just
+                                )
+                in
+                    ( { model | userCounts = newCounts }, Cmd.none )
+            else
+                ( model, Cmd.none )
 
         SendToppingList user ->
             if List.member user (Debug.log "users" model.users) then
@@ -153,15 +157,21 @@ update msg model =
             ( { model | room = room }, Cmd.none )
 
         GuestDisconnected user ->
-            ( { model
-                | users = List.filter ((/=) user) model.users
-                , userCounts = Dict.remove user.name model.userCounts
-              }
-            , Cmd.none
-            )
+            ( removeGuest user model, Cmd.none )
+
+        KickOut user ->
+            ( removeGuest user model, Socket.kickGuestAsHost user )
 
         Noop ->
             ( model, Cmd.none )
+
+
+removeGuest : User -> Model -> Model
+removeGuest user model =
+    { model
+        | users = List.filter ((/=) user) model.users
+        , userCounts = Dict.remove user.name model.userCounts
+    }
 
 
 
@@ -212,19 +222,20 @@ guestsView users toppings userCounts =
     div []
         [ h1 [] [ text "Guests" ]
         , users
-            |> List.map (userView AddSliceCount toppings userCounts)
+            |> List.map (userView KickOut AddSliceCount toppings userCounts)
             |> div
                 []
         ]
 
 
 userView :
-    (User -> Topping -> Int -> msg)
+    (User -> msg)
+    -> (User -> Topping -> Int -> msg)
     -> List Topping
     -> Dict String Topping.Count
     -> User
     -> Html msg
-userView modify toppings userCounts user =
+userView kickOut modify toppings userCounts user =
     let
         userCount user =
             userCounts
@@ -233,5 +244,6 @@ userView modify toppings userCounts user =
     in
         div []
             [ h2 [] [ text user.name ]
+            , button [ onClick <| kickOut user ] [ text "kick out" ]
             , Guest.userView (modify user) (userCount user) toppings
             ]
