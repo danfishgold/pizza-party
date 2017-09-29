@@ -4,12 +4,13 @@
   "description": "Order pizza with friends with ease",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "elm make src/Main.elm --output=client/elm.js && node server.js"
   },
   "dependencies": {
     "express": "^4.15.4",
     "lowdb": "^1.0.0",
-    "socket.io": "^2.0.3"
+    "socket.io": "^2.0.3",
+    "elm": "0.18.0"
   },
   "engines": {
     "node": "8.x"
