@@ -1,26 +1,26 @@
-port module Socket
-    exposing
-        ( createRoomAsHost
-        , createRoomResponseFromServer
-        , findRoomAsGuest
-        , roomFoundResponseFromServer
-        , broadcastSliceTriplet
-        , sliceTripletsFromGuest
-        , requestToppingsListFromHost
-        , toppingListRequestFromGuest
-        , sendToppingListOrErrorToGuest
-        , toppingListFromHost
-        , guestDisconnectionsFromServer
-        , hostDisconnectionsFromServer
-        , kickGuestAsHost
-        , kickedOutByHost
-        )
+port module Socket exposing
+    ( broadcastSliceTriplet
+    , createRoomAsHost
+    , createRoomResponseFromServer
+    , findRoomAsGuest
+    , guestDisconnectionsFromServer
+    , hostDisconnectionsFromServer
+    , kickGuestAsHost
+    , kickedOutByHost
+    , requestToppingsListFromHost
+    , roomFoundResponseFromServer
+    , sendToppingListOrErrorToGuest
+    , sliceTripletsFromGuest
+    , toppingListFromHost
+    , toppingListRequestFromGuest
+    )
 
-import Json.Encode as Encode exposing (Value)
 import Json.Decode as Decode exposing (Decoder)
-import User exposing (User)
-import Topping exposing (Topping)
+import Json.Encode as Encode exposing (Value)
 import RoomId exposing (RoomId)
+import Topping exposing (Topping)
+import User exposing (User)
+
 
 
 -- DECODERS AND ENCODERS
@@ -28,7 +28,7 @@ import RoomId exposing (RoomId)
 
 decodeTriplet : Decoder ( User, Topping, Int )
 decodeTriplet =
-    Decode.map3 (,,)
+    Decode.map3 (\a b c -> ( a, b, c ))
         (Decode.field "user" User.decoder)
         (Decode.field "topping" Topping.decoder)
         (Decode.field "count" Decode.int)
@@ -47,7 +47,7 @@ decodeResult : Decode.Decoder (Result String a) -> Value -> Result String a
 decodeResult decoder value =
     case Decode.decodeValue decoder value of
         Err error ->
-            Err error
+            Err <| Decode.errorToString error
 
         Ok result ->
             result
@@ -152,7 +152,7 @@ requestToppingsListFromHost user =
     requestToppingList (User.encode user)
 
 
-toppingListRequestFromGuest : (Result String User -> msg) -> Sub msg
+toppingListRequestFromGuest : (Result Decode.Error User -> msg) -> Sub msg
 toppingListRequestFromGuest toMsg =
     receiveToppingListRequest
         (Decode.decodeValue User.decoder >> toMsg)
@@ -163,11 +163,11 @@ sendToppingListOrErrorToGuest result =
     case result of
         Ok toppings ->
             toppings
-                |> List.map Topping.encode
-                |> Encode.list
-                |> \toppingList ->
-                    Encode.object [ ( "toppings", toppingList ) ]
-                        |> sendToppingListOrError
+                |> Encode.list Topping.encode
+                |> (\toppingList ->
+                        Encode.object [ ( "toppings", toppingList ) ]
+                            |> sendToppingListOrError
+                   )
 
         Err error ->
             Encode.object [ ( "error", Encode.string error ) ]

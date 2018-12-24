@@ -1,8 +1,8 @@
 module Division exposing (Division, makePies)
 
-import Count exposing (Count)
-import Topping exposing (Topping, Pair)
 import Config exposing (Config)
+import Count exposing (Count)
+import Topping exposing (Pair, Topping)
 
 
 type alias Division =
@@ -34,20 +34,20 @@ map remainingParser { pies, remaining, leftovers } =
         sortRemaining =
             remainingParser remaining
     in
-        { sortRemaining
-            | pies = pies ++ sortRemaining.pies
-            , leftovers = Count.join leftovers sortRemaining.leftovers
-        }
+    { sortRemaining
+        | pies = pies ++ sortRemaining.pies
+        , leftovers = Count.join leftovers sortRemaining.leftovers
+    }
 
 
-{-|
-First, if there's a pair with more than slicesPerPie slices,
+{-| First, if there's a pair with more than slicesPerPie slices,
 make a pie with just that topping.
 
 Then, put aside the slices which are less than slicesPerPart,
 because those can't fill pies anyway.
 
 Then the main part happens. More on that in attemptToFill.
+
 -}
 makePies : Config -> Count Topping Topping.Key -> Division
 makePies config count =
@@ -75,13 +75,13 @@ extractWholePies config count =
         ( wholePies, remaining ) =
             Count.splitValuesModulo slicesPerPie count
     in
-        { emptyDivision
-            | pies =
-                wholePies
-                    |> Count.toList
-                    |> List.concatMap (splitToPies slicesPerPie)
-            , remaining = remaining
-        }
+    { emptyDivision
+        | pies =
+            wholePies
+                |> Count.toList
+                |> List.concatMap (splitToPies slicesPerPie)
+        , remaining = remaining
+    }
 
 
 
@@ -94,10 +94,10 @@ extractLeftovers { slicesPerPart } count =
         ( rounded, leftovers ) =
             Count.splitValuesModulo slicesPerPart count
     in
-        { emptyDivision
-            | remaining = rounded
-            , leftovers = leftovers
-        }
+    { emptyDivision
+        | remaining = rounded
+        , leftovers = leftovers
+    }
 
 
 
@@ -120,31 +120,33 @@ maybeFill config count =
                         (\semipie -> sliceCount semipie == slicesPerPie)
                         semipies
             in
-                { emptyDivision
-                    | pies = pies
-                    , remaining = rest |> List.concat |> Topping.countFromList
-                }
+            { emptyDivision
+                | pies = pies
+                , remaining = rest |> List.concat |> Topping.countFromList
+            }
 
 
-{-|
-This is the main part. It's a recursive function whose job is to fill pies.
+{-| This is the main part. It's a recursive function whose job is to fill pies.
 
 It can return a list of pies, or Nothing.
 The end condition is an empty `countSortedBigToSmall`, meaning there are no
 more pairs to organize.
 When this happens, there are two options:
-1. All pies except for at most one are full = success
-2. There's more than one partial pie = failure
+
+1.  All pies except for at most one are full = success
+2.  There's more than one partial pie = failure
 
 The recursion step has multiple options and when one results in a failure,
 it moves to the next option.
 Take the largest unorganized pair.
-1. If it can fit in an existing pie, put it there (`tryFittingIn`). Otherwise,
-2. Start a new pie with that pair (`tryAsNewPie`). If this fails,
-3. Split the pair into two (`trySplitting`) and try again.
+
+1.  If it can fit in an existing pie, put it there (`tryFittingIn`). Otherwise,
+2.  Start a new pie with that pair (`tryAsNewPie`). If this fails,
+3.  Split the pair into two (`trySplitting`) and try again.
 
 I didn't check whether this algorithm always succeeds,
 but that's what fuzz tests are for :D
+
 -}
 attemptToFill : Config -> List Pair -> List Pie -> Maybe (List Pie)
 attemptToFill config countSortedBigToSmall semipies =
@@ -155,29 +157,31 @@ attemptToFill config countSortedBigToSmall semipies =
         slicesPerPie =
             config.slicesPerPart * config.partsPerPie
     in
-        case countSortedBigToSmall of
-            [] ->
-                if
-                    pieSizes
-                        |> List.filter (\count -> count < slicesPerPie)
-                        |> List.length
-                        |> \unfilledPies -> unfilledPies <= 1
-                then
-                    Just semipies
-                else
-                    Nothing
+    case countSortedBigToSmall of
+        [] ->
+            if
+                pieSizes
+                    |> List.filter (\count -> count < slicesPerPie)
+                    |> List.length
+                    |> (\unfilledPies -> unfilledPies <= 1)
+            then
+                Just semipies
 
-            biggestPair :: rest ->
+            else
                 Nothing
-                    |> orTry (\_ -> tryFittingIn config biggestPair rest semipies)
-                    |> orTry (\_ -> tryAsNewPie config biggestPair rest semipies)
-                    |> orTry (\_ -> trySplitting config biggestPair rest semipies)
+
+        biggestPair :: rest ->
+            Nothing
+                |> orTry (\_ -> tryFittingIn config biggestPair rest semipies)
+                |> orTry (\_ -> tryAsNewPie config biggestPair rest semipies)
+                |> orTry (\_ -> trySplitting config biggestPair rest semipies)
 
 
 orTry : (() -> Maybe a) -> Maybe a -> Maybe a
 orTry newTry previousTry =
     if previousTry == Nothing then
         newTry ()
+
     else
         previousTry
 
@@ -192,6 +196,7 @@ maybeFitInPies slicesPerPie ( topping, count ) sortedSemipies =
             if sliceCount biggestPie + count > slicesPerPie then
                 maybeFitInPies slicesPerPie ( topping, count ) rest
                     |> Maybe.map ((::) biggestPie)
+
             else
                 (( topping, count ) :: biggestPie) :: rest |> Just
 
@@ -218,7 +223,8 @@ trySplitting config ( topping, count ) rest semipies =
                     |> insertToSorted ( topping, config.slicesPerPart )
                     |> insertToSorted ( topping, count - config.slicesPerPart )
         in
-            attemptToFill config newPairs semipies
+        attemptToFill config newPairs semipies
+
     else
         Nothing
 
@@ -251,5 +257,6 @@ insertToSorted pair pairs =
         hd :: tl ->
             if sortKey pair < sortKey hd then
                 pair :: pairs
+
             else
                 hd :: insertToSorted pair tl

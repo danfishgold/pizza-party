@@ -1,15 +1,24 @@
-module Guest exposing (..)
+module Guest exposing
+    ( Model
+    , Msg
+    , initialModel
+    , subscriptions
+    , update
+    , userView
+    , view
+    )
 
-import Html exposing (Html, program, div, p, form, input, button, text, span, a)
-import Html.Attributes exposing (disabled, style, value, href)
-import Html.Events exposing (onClick, onInput)
-import Topping exposing (Topping)
+import Browser.Events
 import Count
-import User exposing (User)
+import Html exposing (Html, a, button, div, form, input, p, span, text)
+import Html.Attributes exposing (disabled, href, style, value)
+import Html.Events exposing (onClick, onInput)
+import Json.Decode
 import RoomId exposing (RoomId)
 import Socket
-import Json.Decode
 import Stage exposing (Stage(..))
+import Topping exposing (Topping)
+import User exposing (User)
 
 
 type State
@@ -112,6 +121,7 @@ onTripletUpdate model triplet =
         ( RoomJoining (Success { user }), Just ( updatedUser, topping, count ) ) ->
             if user.name == updatedUser.name then
                 SetSliceCount topping count
+
             else
                 Noop
 
@@ -133,12 +143,15 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model.state ) of
         ( SetState (RoomFinding (Success roomId)), _ ) ->
-            roomId
-                |> initialPartial
-                |> Editing
-                |> RoomJoining
-                |> SetState
-                |> flip update model
+            let
+                msg_ =
+                    roomId
+                        |> initialPartial
+                        |> Editing
+                        |> RoomJoining
+                        |> SetState
+            in
+            update msg_ model
 
         ( SetState state, _ ) ->
             ( { model | state = state }, Cmd.none )
@@ -171,9 +184,9 @@ update msg model =
                 ( newCounts, newValue ) =
                     model.counts |> Count.add topping delta
             in
-                ( { model | counts = newCounts }
-                , Socket.broadcastSliceTriplet user topping newValue
-                )
+            ( { model | counts = newCounts }
+            , Socket.broadcastSliceTriplet user topping newValue
+            )
 
         ( SetSliceCount topping newValue, RoomJoining (Success _) ) ->
             ( { model | counts = model.counts |> Count.set topping newValue }
@@ -181,37 +194,44 @@ update msg model =
             )
 
         ( HostDisconnected, RoomJoining _ ) ->
-            "The host disconnected :("
-                |> Failure (RoomId.fromString "")
-                |> RoomFinding
-                |> SetState
-                |> flip update model
+            let
+                msg_ =
+                    "The host disconnected :("
+                        |> Failure (RoomId.fromString "")
+                        |> RoomFinding
+                        |> SetState
+            in
+            update msg_ model
 
         ( KickedOut kickedOutUser, RoomJoining stage ) ->
             let
                 user =
                     case Stage.data stage of
-                        Stage.In { user } ->
-                            user
+                        Stage.In partialGroup ->
+                            partialGroup.user
 
-                        Stage.Out { user } ->
-                            user
+                        Stage.Out group ->
+                            group.user
             in
-                if kickedOutUser == user then
-                    "You were kicked out by the host"
-                        |> Failure (RoomId.fromString "")
-                        |> RoomFinding
-                        |> SetState
-                        |> flip update model
-                else
-                    ( model, Cmd.none )
+            if kickedOutUser == user then
+                let
+                    msg_ =
+                        "You were kicked out by the host"
+                            |> Failure (RoomId.fromString "")
+                            |> RoomFinding
+                            |> SetState
+                in
+                update msg_ model
+
+            else
+                ( model, Cmd.none )
 
         _ ->
-            Debug.crash <|
+            Debug.todo <|
                 "got message "
-                    ++ toString msg
+                    ++ Debug.toString msg
                     ++ " with model "
-                    ++ toString model
+                    ++ Debug.toString model
 
 
 
@@ -220,9 +240,7 @@ update msg model =
 
 onSubmit : msg -> Html.Attribute msg
 onSubmit msg =
-    Html.Events.onWithOptions "submit"
-        { preventDefault = True, stopPropagation = False }
-        (Json.Decode.succeed msg)
+    Html.Events.preventDefaultOn "submit" (Json.Decode.succeed ( msg, True ))
 
 
 view : Model -> Html Msg
@@ -241,13 +259,13 @@ findingView stage =
         Stage.In roomId ->
             stageForm "Enter the room number"
                 "Find Room"
-                (RoomId.toString)
+                RoomId.toString
                 stage
                 (RoomId.fromString >> EditRoomId)
                 FindRoom
 
         Stage.Out _ ->
-            Debug.crash "Forbidden state"
+            Debug.todo "Forbidden state"
 
 
 joiningView : Stage PartialGroup Group -> Topping.Count -> Html Msg
@@ -283,6 +301,7 @@ stageForm prompt buttonText inputToString stage onInput_ onSubmit_ =
                     [ text <|
                         if Stage.waiting stage then
                             "Fetching..."
+
                         else
                             buttonText
                     ]
@@ -292,7 +311,7 @@ stageForm prompt buttonText inputToString stage onInput_ onSubmit_ =
                 ]
 
         Stage.Out _ ->
-            Debug.crash "Tried to show form on Success state"
+            Debug.todo "Tried to show form on Success state"
 
 
 
@@ -338,7 +357,7 @@ userView modify count toppings =
                 (Count.get topping count)
                 topping
     in
-        List.map counter toppings |> div []
+    List.map counter toppings |> div []
 
 
 toppingCounter : msg -> msg -> Int -> Topping -> Html msg
@@ -358,24 +377,23 @@ toppingCounter decrease increase value topping =
                 _ ->
                     "darkorange"
     in
-        div
-            [ style
-                [ ( "display", "inline-block" )
-                , ( "background-color", color )
-                , ( "padding", "5px" )
-                , ( "margin", "10px" )
+    div
+        [ style "display" "inline-block"
+        , style "background-color" color
+        , style "padding" "5px"
+        , style "margin" "10px"
+        ]
+        [ span [ style "font-weight" "bold" ] [ text topping.name ]
+        , div []
+            [ button
+                [ if value == 0 then
+                    disabled True
+
+                  else
+                    onClick <| decrease
                 ]
+                [ text "-" ]
+            , text <| String.fromInt value
+            , button [ onClick <| increase ] [ text "+" ]
             ]
-            [ span [ style [ ( "font-weight", "bold" ) ] ] [ text topping.name ]
-            , div []
-                [ button
-                    [ if value == 0 then
-                        disabled True
-                      else
-                        onClick <| decrease
-                    ]
-                    [ text "-" ]
-                , text <| toString value
-                , button [ onClick <| increase ] [ text "+" ]
-                ]
-            ]
+        ]

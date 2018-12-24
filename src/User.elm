@@ -1,4 +1,4 @@
-module User exposing (User, Key, key, fromKey, decoder, encode)
+module User exposing (Key, User, decoder, encode, fromKey, key)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
@@ -29,5 +29,5 @@ key user =
 
 
 fromKey : Key -> Maybe User
-fromKey key =
-    Decode.decodeString decoder key |> Result.toMaybe
+fromKey key_ =
+    Decode.decodeString decoder key_ |> Result.toMaybe

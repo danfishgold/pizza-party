@@ -1,4 +1,14 @@
-module Stage exposing (..)
+module Stage exposing
+    ( Data(..)
+    , Stage(..)
+    , applyResult
+    , canEdit
+    , canSubmit
+    , data
+    , error
+    , update
+    , waiting
+    )
 
 
 type Stage input output
@@ -38,8 +48,8 @@ error stage =
         Waiting _ ->
             Nothing
 
-        Failure _ error ->
-            Just error
+        Failure _ error_ ->
+            Just error_
 
         Success _ ->
             Nothing
@@ -103,22 +113,19 @@ setInput newInput stage =
             Editing newInput
 
         _ ->
-            Debug.crash <|
-                "Tried to set input "
-                    ++ toString newInput
-                    ++ " for "
-                    ++ toString stage
+            Failure newInput
+                "Tried to set input when the stage wasn't editing or failing"
 
 
 update : (a -> input -> input) -> a -> Stage input output -> Stage input output
 update fn a stage =
     case data stage of
-        Out _ ->
-            Debug.crash <|
+        Out output ->
+            Debug.todo <|
                 "Tried to udpdate "
-                    ++ toString stage
+                    ++ Debug.toString stage
                     ++ " with "
-                    ++ toString a
+                    ++ Debug.toString a
 
         In input ->
             setInput (fn a input) stage
@@ -131,9 +138,9 @@ succeed fn stage =
             Success (fn input)
 
         _ ->
-            Debug.crash <|
+            Debug.todo <|
                 "Tried to succeed with "
-                    ++ toString stage
+                    ++ Debug.toString stage
 
 
 applyResult : (extra -> input -> output) -> Stage input output -> Result String extra -> Stage input output
@@ -144,12 +151,12 @@ applyResult joiningFn stage result =
                 Ok extra ->
                     Success <| joiningFn extra input
 
-                Err error ->
-                    Failure input error
+                Err error_ ->
+                    Failure input error_
 
         _ ->
-            Debug.crash <|
+            Debug.todo <|
                 "Tried to use result "
-                    ++ toString result
+                    ++ Debug.toString result
                     ++ " with "
-                    ++ toString stage
+                    ++ Debug.toString stage

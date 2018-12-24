@@ -1,23 +1,19 @@
-module Topping
-    exposing
-        ( Topping
-        , Pair
-        , Key
-        , key
-        , fromKey
-        , all
-        , decoder
-        , encode
-        , Count
-        , countFromList
-        , countFromKeyList
-        , emptyCount
-        , concatCounts
-        )
+module Topping exposing
+    ( Count
+    , Key
+    , Pair
+    , Topping
+    , all
+    , concatCounts
+    , countFromList
+    , decoder
+    , emptyCount
+    , encode
+    )
 
+import Count
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
-import Count
 
 
 type alias Topping =
@@ -48,8 +44,8 @@ key topping =
 
 
 fromKey : Key -> Maybe Topping
-fromKey key =
-    Decode.decodeString decoder key |> Result.toMaybe
+fromKey key_ =
+    Decode.decodeString decoder key_ |> Result.toMaybe
 
 
 all : List Topping
@@ -90,4 +86,4 @@ emptyCount =
 
 concatCounts : List Count -> Count
 concatCounts counts =
-    List.foldl (Count.join) emptyCount counts
+    List.foldl Count.join emptyCount counts

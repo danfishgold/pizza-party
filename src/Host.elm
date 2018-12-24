@@ -1,18 +1,26 @@
-port module Host exposing (..)
+port module Host exposing
+    ( Model
+    , Msg
+    , fake
+    , initialModel
+    , subscriptions
+    , update
+    , view
+    )
 
-import Html exposing (Html, program, div, p, button, h1, h2, span, a, text)
+import Config exposing (Config)
+import Count
+import Diagram
+import Dict exposing (Dict)
+import Guest exposing (userView)
+import Html exposing (Html, a, button, div, h1, h2, p, span, text)
 import Html.Attributes exposing (href)
 import Html.Events exposing (onClick)
-import Config exposing (Config)
-import Guest exposing (userView)
-import User exposing (User)
-import Topping exposing (Topping)
 import RoomId exposing (RoomId)
-import Diagram
 import Socket
 import Stage exposing (Stage(..))
-import Dict exposing (Dict)
-import Count
+import Topping exposing (Topping)
+import User exposing (User)
 
 
 type alias Model =
@@ -111,12 +119,12 @@ update msg model =
                         |> Maybe.withDefault Topping.emptyCount
                         |> Count.add topping delta
             in
-                ( { model
-                    | userCounts =
-                        Dict.insert user.name newCount model.userCounts
-                  }
-                , Socket.broadcastSliceTriplet user topping newValue
-                )
+            ( { model
+                | userCounts =
+                    Dict.insert user.name newCount model.userCounts
+              }
+            , Socket.broadcastSliceTriplet user topping newValue
+            )
 
         AddHostSliceCount topping delta ->
             ( { model
@@ -139,7 +147,8 @@ update msg model =
                                     >> Just
                                 )
                 in
-                    ( { model | userCounts = newCounts }, Cmd.none )
+                ( { model | userCounts = newCounts }, Cmd.none )
+
             else
                 ( model, Cmd.none )
 
@@ -148,6 +157,7 @@ update msg model =
                 ( model
                 , Socket.sendToppingListOrErrorToGuest (Err "Name already exists")
                 )
+
             else
                 ( { model | users = user :: model.users }
                 , Socket.sendToppingListOrErrorToGuest (Ok model.toppings)
@@ -209,6 +219,7 @@ view model =
                             , text ")"
                             ]
                         ]
+
                   else
                     guestsView model.users model.toppings model.userCounts
                 ]
@@ -237,13 +248,13 @@ userView :
     -> Html msg
 userView kickOut modify toppings userCounts user =
     let
-        userCount user =
+        userCount =
             userCounts
                 |> Dict.get user.name
                 |> Maybe.withDefault Topping.emptyCount
     in
-        div []
-            [ h2 [] [ text user.name ]
-            , button [ onClick <| kickOut user ] [ text "kick out" ]
-            , Guest.userView (modify user) (userCount user) toppings
-            ]
+    div []
+        [ h2 [] [ text user.name ]
+        , button [ onClick <| kickOut user ] [ text "kick out" ]
+        , Guest.userView (modify user) userCount toppings
+        ]

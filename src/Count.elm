@@ -1,4 +1,15 @@
-module Count exposing (..)
+module Count exposing
+    ( Count(..)
+    , add
+    , empty
+    , fromKeyList
+    , fromList
+    , get
+    , join
+    , set
+    , splitValuesModulo
+    , toList
+    )
 
 import Dict exposing (Dict)
 
@@ -20,8 +31,8 @@ count toComparable fromComparable dict =
         }
 
 
-setDict : Dict comparable Int -> Count key comparable -> Count key comparable
-setDict newDict (Count c) =
+setDict : Count key comparable -> Dict comparable Int -> Count key comparable
+setDict (Count c) newDict =
     Count { c | dict = newDict }
 
 
@@ -29,12 +40,12 @@ mapValues : (Int -> Int) -> Count key comparable -> Count key comparable
 mapValues fn ((Count { dict }) as c) =
     dict
         |> Dict.map (always fn)
-        |> flip setDict c
+        |> setDict c
 
 
 filterValues : (Int -> Bool) -> Count key comparable -> Count key comparable
 filterValues fn ((Count { dict }) as c) =
-    dict |> Dict.filter (always fn) |> flip setDict c
+    dict |> Dict.filter (always fn) |> setDict c
 
 
 splitValues : (Int -> ( Int, Int )) -> Count key comparable -> ( Count key comparable, Count key comparable )
@@ -47,7 +58,7 @@ splitValues splitFn (Count c) =
 
 splitValuesModulo : Int -> Count key comparable -> ( Count key comparable, Count key comparable )
 splitValuesModulo rounder =
-    splitValues (\n -> ( n // rounder * rounder, n % rounder ))
+    splitValues (\n -> ( n // rounder * rounder, modBy rounder n ))
 
 
 tupleMap : (a -> b) -> ( a, a ) -> ( b, b )
@@ -68,19 +79,20 @@ map2 op (Count opt1) (Count opt2) =
                 val =
                     op n m
             in
-                if val == 0 then
-                    newDict
-                else
-                    Dict.insert key val newDict
+            if val == 0 then
+                newDict
+
+            else
+                Dict.insert key val newDict
     in
-        Dict.merge
-            (\k n dict -> merger k n 0 dict)
-            (\k n m dict -> merger k n m dict)
-            (\k m dict -> merger k 0 m dict)
-            opt1.dict
-            opt2.dict
-            Dict.empty
-            |> count opt1.toComparable opt1.fromComparable
+    Dict.merge
+        (\k n dict -> merger k n 0 dict)
+        (\k n m dict -> merger k n m dict)
+        (\k m dict -> merger k 0 m dict)
+        opt1.dict
+        opt2.dict
+        Dict.empty
+        |> count opt1.toComparable opt1.fromComparable
 
 
 join : Count key comparable -> Count key comparable -> Count key comparable
@@ -90,17 +102,17 @@ join =
 
 sum : Count key comparable -> Int
 sum (Count { dict }) =
-    Dict.foldl (\_ count sum -> sum + abs count) 0 dict
+    Dict.foldl (\_ cnt partialSum -> partialSum + abs cnt) 0 dict
 
 
 toList : Count key comparable -> List ( key, Int )
 toList (Count { dict, fromComparable }) =
     let
-        parsePair ( comp, count ) =
-            Maybe.map (flip (,) count) (fromComparable comp)
+        parsePair ( comp, cnt ) =
+            Maybe.map (\k -> ( k, cnt )) (fromComparable comp)
     in
-        Dict.toList dict
-            |> List.filterMap parsePair
+    Dict.toList dict
+        |> List.filterMap parsePair
 
 
 fromList : (key -> comparable) -> (comparable -> Maybe key) -> List ( key, Int ) -> Count key comparable
@@ -144,23 +156,24 @@ get key (Count { dict, toComparable }) =
 set : key -> Int -> Count key comparable -> Count key comparable
 set key value ((Count { dict, toComparable }) as c) =
     Dict.insert (toComparable key) value dict
-        |> flip setDict c
+        |> setDict c
 
 
 add : key -> Int -> Count key comparable -> ( Count key comparable, Int )
-add key delta count =
-    case ( get key count, delta > 0 ) of
+add key delta cnt =
+    case ( get key cnt, delta > 0 ) of
         ( 0, True ) ->
-            ( set key delta count, delta )
+            ( set key delta cnt, delta )
 
         ( 0, False ) ->
-            ( count, 0 )
+            ( cnt, 0 )
 
         ( val, False ) ->
             if val + delta < 0 then
-                ( count, val )
+                ( cnt, val )
+
             else
-                ( set key (val + delta) count, val + delta )
+                ( set key (val + delta) cnt, val + delta )
 
         ( val, True ) ->
-            ( set key (val + delta) count, val + delta )
+            ( set key (val + delta) cnt, val + delta )

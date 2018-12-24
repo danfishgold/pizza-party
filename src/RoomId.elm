@@ -1,4 +1,4 @@
-module RoomId exposing (RoomId, fromString, toString, decoder, encode)
+module RoomId exposing (RoomId, decoder, encode, fromString, toString)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)

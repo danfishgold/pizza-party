@@ -1,9 +1,10 @@
-module Main exposing (..)
+module Main exposing (main)
 
-import Html exposing (Html, program, div, button, text)
-import Html.Events exposing (onClick)
+import Browser exposing (document)
 import Guest
 import Host
+import Html exposing (Html, button, div, text)
+import Html.Events exposing (onClick)
 
 
 type Role
@@ -22,8 +23,8 @@ type Msg
     | HostMsg Host.Msg
 
 
-init : ( Model, Cmd Msg )
-init =
+init : () -> ( Model, Cmd Msg )
+init () =
     ( { role = Undetermined }, Cmd.none )
 
 
@@ -56,17 +57,17 @@ update msg model =
                 ( newRole, subCmd ) =
                     Host.update subMsg subModel
             in
-                ( { model | role = Host newRole }, Cmd.map HostMsg subCmd )
+            ( { model | role = Host newRole }, Cmd.map HostMsg subCmd )
 
         ( Guest subModel, GuestMsg subMsg ) ->
             let
                 ( newRole, subCmd ) =
                     Guest.update subMsg subModel
             in
-                ( { model | role = Guest newRole }, Cmd.map GuestMsg subCmd )
+            ( { model | role = Guest newRole }, Cmd.map GuestMsg subCmd )
 
         _ ->
-            Debug.crash "Wrong state"
+            Debug.todo "Wrong state"
 
 
 view : Model -> Html Msg
@@ -86,11 +87,11 @@ view model =
             Guest.view guest |> Html.map GuestMsg
 
 
-main : Program Never Model Msg
+main : Program () Model Msg
 main =
-    program
+    document
         { init = init
         , subscriptions = subscriptions
         , update = update
-        , view = view
+        , view = \model -> { body = [ view model ], title = "Pizza Party" }
         }

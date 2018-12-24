@@ -1,4 +1,4 @@
-module Config exposing (..)
+module Config exposing (Config)
 
 
 type alias Config =

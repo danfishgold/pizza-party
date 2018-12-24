@@ -1,4 +1,4 @@
-const app = Elm.Main.fullscreen()
+const app = Elm.Main.init()
 
 const socket = io.connect('/')
 

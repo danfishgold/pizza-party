@@ -1,15 +1,12 @@
 module Diagram exposing (pies)
 
-import Svg exposing (Svg, svg, g, path, text_, text)
-import Svg.Attributes exposing (width, height, transform)
-import Svg.Attributes exposing (d, stroke, fill)
-import Svg.Attributes exposing (x, y, textAnchor)
-import Topping exposing (Topping)
 import Color exposing (Color)
-import Color.Convert exposing (colorToCssRgb)
 import Config exposing (Config)
-import Division
 import Count
+import Division
+import Svg exposing (Svg, g, path, svg, text, text_)
+import Svg.Attributes exposing (d, fill, height, stroke, textAnchor, transform, width, x, y)
+import Topping exposing (Topping)
 
 
 pies : Float -> Config -> Topping.Count -> List (Svg msg)
@@ -36,10 +33,10 @@ pies radius config toppingCount =
                 pairs ->
                     [ pairs ]
     in
-        separated.pies
-            ++ remainder.pies
-            ++ remainderRemaining
-            |> List.map (pie radius slicesPerPie)
+    separated.pies
+        ++ remainder.pies
+        ++ remainderRemaining
+        |> List.map (pie radius slicesPerPie)
 
 
 pie : Float -> Int -> List Topping.Pair -> Svg msg
@@ -55,29 +52,30 @@ pie radius slicesPerPie pieCount =
 
         translation =
             "translate("
-                ++ toString (radius + 1)
+                ++ String.fromFloat (radius + 1)
                 ++ ","
-                ++ toString (radius + 1)
+                ++ String.fromFloat (radius + 1)
                 ++ ")"
     in
-        pieCount
-            |> List.sortBy (negate << Tuple.second)
-            |> List.foldl slicePositionInPie ( [], 0 )
-            |> Tuple.first
-            |> List.map sliceView
-            |> g [ transform translation ]
-            |> List.singleton
-            |> svg
-                [ width <| toString <| radius * 2 + 2
-                , height <| toString <| radius * 2 + 2
-                , Svg.Attributes.style "margin: 10px"
-                ]
+    pieCount
+        |> List.sortBy (negate << Tuple.second)
+        |> List.foldl slicePositionInPie ( [], 0 )
+        |> Tuple.first
+        |> List.map sliceView
+        |> g [ transform translation ]
+        |> List.singleton
+        |> svg
+            [ width <| String.fromFloat <| radius * 2 + 2
+            , height <| String.fromFloat <| radius * 2 + 2
+            , Svg.Attributes.style "margin: 10px"
+            ]
 
 
 slice : Float -> Int -> Int -> Int -> Topping -> Svg msg
 slice radius slicesPerPie slicesStart sliceCount topping =
     if sliceCount == 0 then
         g [] []
+
     else
         let
             startAngle =
@@ -86,10 +84,10 @@ slice radius slicesPerPie slicesStart sliceCount topping =
             endAngle =
                 startAngle + degrees 360 * toFloat sliceCount / toFloat slicesPerPie
         in
-            g []
-                [ arc radius startAngle endAngle Color.white
-                , arcTitle radius startAngle endAngle topping.name Color.black
-                ]
+        g []
+            [ arc radius startAngle endAngle Color.white
+            , arcTitle radius startAngle endAngle topping.name Color.black
+            ]
 
 
 arc : Float -> Float -> Float -> Color -> Svg msg
@@ -104,6 +102,7 @@ arc r startAngle endAngle color =
         arcSweep =
             if endAngle - startAngle <= degrees 180 then
                 0
+
             else
                 1
 
@@ -112,6 +111,7 @@ arc r startAngle endAngle color =
                 [ pathCommand "M" [ start.x, start.y ]
                 , pathCommand "A" [ r, r, 0, arcSweep, 1, end.x, end.y ]
                 ]
+
             else
                 [ pathCommand "M" [ start.x, start.y ]
                 , pathCommand "A" [ r, r, 0, arcSweep, 1, end.x, end.y ]
@@ -119,12 +119,12 @@ arc r startAngle endAngle color =
                 , pathCommand "Z" []
                 ]
     in
-        path
-            [ pathComponents |> String.join " " |> d
-            , stroke "black"
-            , fill <| colorToCssRgb color
-            ]
-            []
+    path
+        [ pathComponents |> String.join " " |> d
+        , stroke "black"
+        , fill <| Color.toCssString color
+        ]
+        []
 
 
 arcTitle : Float -> Float -> Float -> String -> Color -> Svg msg
@@ -133,19 +133,20 @@ arcTitle r startAngle endAngle title color =
         center =
             arcCenter r startAngle endAngle
     in
-        text_
-            [ x <| toString center.x
-            , y <| toString center.y
-            , textAnchor "middle"
-            , fill <| colorToCssRgb color
-            ]
-            [ text title ]
+    text_
+        [ x <| String.fromFloat center.x
+        , y <| String.fromFloat center.y
+        , textAnchor "middle"
+        , fill <| Color.toCssString color
+        ]
+        [ text title ]
 
 
 arcCenter : Float -> Float -> Float -> { x : Float, y : Float }
 arcCenter r startAngle endAngle =
     if endAngle <= startAngle then
         arcCenter r startAngle (endAngle + 2 * pi)
+
     else
         let
             alpha =
@@ -154,18 +155,19 @@ arcCenter r startAngle endAngle =
             rad =
                 if alpha == 2 * pi then
                     0
+
                 else
                     2 * r / 3 * (1 - alpha / (8 * pi))
 
             theta =
                 startAngle + alpha / 2
         in
-            polarToCartesian rad theta
+        polarToCartesian rad theta
 
 
 pathCommand : String -> List Float -> String
 pathCommand command values =
-    command :: List.map toString values |> String.join " "
+    command :: List.map String.fromFloat values |> String.join " "
 
 
 polarToCartesian : Float -> Float -> { x : Float, y : Float }
