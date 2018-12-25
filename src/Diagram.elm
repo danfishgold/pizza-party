@@ -1,7 +1,7 @@
 module Diagram exposing (pies)
 
 import Color exposing (Color)
-import Config exposing (Config)
+import Config
 import Count
 import Division
 import Svg exposing (Svg, g, path, svg, text, text_)
@@ -9,7 +9,7 @@ import Svg.Attributes exposing (d, fill, height, stroke, textAnchor, transform, 
 import Topping exposing (Topping)
 
 
-pies : Float -> Config -> Topping.Count -> List (Svg msg)
+pies : Float -> Config.Slices -> Topping.Count -> List (Svg msg)
 pies radius config toppingCount =
     let
         slicesPerPie =
@@ -86,7 +86,7 @@ slice radius slicesPerPie slicesStart sliceCount topping =
         in
         g []
             [ arc radius startAngle endAngle Color.white
-            , arcTitle radius startAngle endAngle topping.name Color.black
+            , arcTitle radius startAngle endAngle (Topping.toString topping) Color.black
             ]
 
 

@@ -19,7 +19,7 @@ import Html.Events exposing (onClick)
 import RoomId exposing (RoomId)
 import Socket
 import Stage exposing (Stage(..))
-import Topping exposing (Topping)
+import Topping exposing (BaseTopping, Topping)
 import User exposing (User)
 
 
@@ -27,7 +27,6 @@ type alias Model =
     { config : Config
     , userCounts : Dict String Topping.Count
     , hostCount : Topping.Count
-    , toppings : List Topping
     , users : List User
     , room : Stage () RoomId
     }
@@ -48,12 +47,11 @@ type Msg
 initialModel : Model
 initialModel =
     { config =
-        { slicesPerPart = 2
-        , partsPerPie = 4
+        { slices = { slicesPerPart = 2, partsPerPie = 4 }
+        , toppings = { base = Topping.all, maxToppingsPerSlice = 1 }
         }
     , userCounts = Dict.empty
     , hostCount = Topping.emptyCount
-    , toppings = Topping.all
     , users = []
     , room = Editing ()
     }
@@ -85,7 +83,7 @@ subscriptions model =
                     (Maybe.map (\( u, t, n ) -> SetSliceCount u t n)
                         >> Maybe.withDefault Noop
                     )
-                , Socket.toppingListRequestFromGuest
+                , Socket.baseToppingListRequestFromGuest
                     (Result.toMaybe
                         >> Maybe.map SendToppingList
                         >> Maybe.withDefault Noop
@@ -155,12 +153,12 @@ update msg model =
         SendToppingList user ->
             if List.member user (Debug.log "users" model.users) then
                 ( model
-                , Socket.sendToppingListOrErrorToGuest (Err "Name already exists")
+                , Socket.sendBaseToppingListOrErrorToGuest (Err "Name already exists")
                 )
 
             else
                 ( { model | users = user :: model.users }
-                , Socket.sendToppingListOrErrorToGuest (Ok model.toppings)
+                , Socket.sendBaseToppingListOrErrorToGuest (Ok model.config.toppings.base)
                 )
 
         SetSocketRoom room ->
@@ -207,9 +205,9 @@ view model =
                     |> Dict.values
                     |> (::) model.hostCount
                     |> Topping.concatCounts
-                    |> Diagram.pies 100 model.config
+                    |> Diagram.pies 100 model.config.slices
                     |> div []
-                , Guest.userView AddHostSliceCount model.hostCount model.toppings
+                , Guest.userView AddHostSliceCount model.hostCount model.config.toppings.base
                 , if List.isEmpty model.users then
                     div []
                         [ p [] [ text "But nobody came." ]
@@ -221,19 +219,19 @@ view model =
                         ]
 
                   else
-                    guestsView model.users model.toppings model.userCounts
+                    guestsView model.users model.config.toppings.base model.userCounts
                 ]
 
         Failure _ error ->
             text ("Error: " ++ error)
 
 
-guestsView : List User -> List Topping -> Dict String Topping.Count -> Html Msg
-guestsView users toppings userCounts =
+guestsView : List User -> List BaseTopping -> Dict String Topping.Count -> Html Msg
+guestsView users baseToppings userCounts =
     div []
         [ h1 [] [ text "Guests" ]
         , users
-            |> List.map (userView KickOut AddSliceCount toppings userCounts)
+            |> List.map (userView KickOut AddSliceCount baseToppings userCounts)
             |> div
                 []
         ]
@@ -242,11 +240,11 @@ guestsView users toppings userCounts =
 userView :
     (User -> msg)
     -> (User -> Topping -> Int -> msg)
-    -> List Topping
+    -> List BaseTopping
     -> Dict String Topping.Count
     -> User
     -> Html msg
-userView kickOut modify toppings userCounts user =
+userView kickOut modify baseToppings userCounts user =
     let
         userCount =
             userCounts
@@ -256,5 +254,5 @@ userView kickOut modify toppings userCounts user =
     div []
         [ h2 [] [ text user.name ]
         , button [ onClick <| kickOut user ] [ text "kick out" ]
-        , Guest.userView (modify user) userCount toppings
+        , Guest.userView (modify user) userCount baseToppings
         ]

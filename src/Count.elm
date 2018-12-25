@@ -2,10 +2,13 @@ module Count exposing
     ( Count(..)
     , add
     , empty
+    , filter
+    , filterOutZerosExcludingList
     , fromKeyList
     , fromList
     , get
     , join
+    , keys
     , set
     , splitValuesModulo
     , toList
@@ -148,6 +151,11 @@ empty toComparable fromComparable =
     count toComparable fromComparable Dict.empty
 
 
+keys : Count key comparable -> List key
+keys (Count { dict, fromComparable }) =
+    Dict.keys dict |> List.filterMap fromComparable
+
+
 get : key -> Count key comparable -> Int
 get key (Count { dict, toComparable }) =
     Dict.get (toComparable key) dict |> Maybe.withDefault 0
@@ -177,3 +185,35 @@ add key delta cnt =
 
         ( val, True ) ->
             ( set key (val + delta) cnt, val + delta )
+
+
+filterOutZerosExcludingList : List key -> Count key comparable -> Count key comparable
+filterOutZerosExcludingList keysToKeep (Count c) =
+    let
+        shouldKeep k cnt =
+            if cnt > 0 then
+                True
+
+            else
+                case c.fromComparable k of
+                    Nothing ->
+                        False
+
+                    Just key ->
+                        List.member key keysToKeep
+    in
+    Count { c | dict = c.dict |> Dict.filter shouldKeep }
+
+
+filter : (key -> Int -> Bool) -> Count key comparable -> Count key comparable
+filter filterer (Count c) =
+    let
+        filterer_ comp cnt =
+            case c.fromComparable comp of
+                Nothing ->
+                    False
+
+                Just key ->
+                    filterer key cnt
+    in
+    Count { c | dict = Dict.filter filterer_ c.dict }

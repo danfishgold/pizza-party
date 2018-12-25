@@ -1,6 +1,6 @@
 module Division exposing (Division, makePies)
 
-import Config exposing (Config)
+import Config
 import Count exposing (Count)
 import Topping exposing (Pair, Topping)
 
@@ -49,7 +49,7 @@ because those can't fill pies anyway.
 Then the main part happens. More on that in attemptToFill.
 
 -}
-makePies : Config -> Count Topping Topping.Key -> Division
+makePies : Config.Slices -> Count Topping Topping.Key -> Division
 makePies config count =
     { emptyDivision | remaining = count }
         |> map (extractWholePies config)
@@ -66,7 +66,7 @@ splitToPies slicesPerPie ( topping, count ) =
     List.repeat (count // slicesPerPie) [ ( topping, slicesPerPie ) ]
 
 
-extractWholePies : Config -> Topping.Count -> Division
+extractWholePies : Config.Slices -> Topping.Count -> Division
 extractWholePies config count =
     let
         slicesPerPie =
@@ -88,7 +88,7 @@ extractWholePies config count =
 --
 
 
-extractLeftovers : Config -> Topping.Count -> Division
+extractLeftovers : Config.Slices -> Topping.Count -> Division
 extractLeftovers { slicesPerPart } count =
     let
         ( rounded, leftovers ) =
@@ -104,7 +104,7 @@ extractLeftovers { slicesPerPart } count =
 --
 
 
-maybeFill : Config -> Topping.Count -> Division
+maybeFill : Config.Slices -> Topping.Count -> Division
 maybeFill config count =
     case attemptToFill config (List.sortBy sortKey <| Count.toList count) [] of
         Nothing ->
@@ -148,7 +148,7 @@ I didn't check whether this algorithm always succeeds,
 but that's what fuzz tests are for :D
 
 -}
-attemptToFill : Config -> List Pair -> List Pie -> Maybe (List Pie)
+attemptToFill : Config.Slices -> List Pair -> List Pie -> Maybe (List Pie)
 attemptToFill config countSortedBigToSmall semipies =
     let
         pieSizes =
@@ -201,7 +201,7 @@ maybeFitInPies slicesPerPie ( topping, count ) sortedSemipies =
                 (( topping, count ) :: biggestPie) :: rest |> Just
 
 
-tryFittingIn : Config -> Pair -> List Pair -> List Pie -> Maybe (List Pie)
+tryFittingIn : Config.Slices -> Pair -> List Pair -> List Pie -> Maybe (List Pie)
 tryFittingIn config pair rest semipies =
     maybeFitInPies (config.slicesPerPart * config.partsPerPie)
         pair
@@ -209,12 +209,12 @@ tryFittingIn config pair rest semipies =
         |> Maybe.andThen (attemptToFill config rest)
 
 
-tryAsNewPie : Config -> Pair -> List Pair -> List Pie -> Maybe (List Pie)
+tryAsNewPie : Config.Slices -> Pair -> List Pair -> List Pie -> Maybe (List Pie)
 tryAsNewPie config pair rest semipies =
     attemptToFill config rest ([ pair ] :: semipies)
 
 
-trySplitting : Config -> Pair -> List Pair -> List Pie -> Maybe (List Pie)
+trySplitting : Config.Slices -> Pair -> List Pair -> List Pie -> Maybe (List Pie)
 trySplitting config ( topping, count ) rest semipies =
     if count > config.slicesPerPart then
         let

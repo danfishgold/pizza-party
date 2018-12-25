@@ -65,13 +65,13 @@ function joinRoomAndAddHandlers(socket, roomId) {
   }
   socket.join(room.name)
 
-  socket.on('request-topping-list', data => {
+  socket.on('request-base-topping-list', data => {
     room.user = data
-    socket.to(room.hostId).emit('request-topping-list', data)
+    socket.to(room.hostId).emit('request-base-topping-list', data)
   })
 
-  socket.on('topping-list', data => {
-    socket.to(room.name).emit('topping-list', data)
+  socket.on('base-topping-list', data => {
+    socket.to(room.name).emit('base-topping-list', data)
   })
 
   socket.on('triplet', data => {

@@ -17,12 +17,12 @@ app.ports.sendTriplet.subscribe(data => {
   socket.emit('triplet', data)
 })
 
-app.ports.requestToppingList.subscribe(data => {
-  socket.emit('request-topping-list', data)
+app.ports.requestBaseToppingList.subscribe(data => {
+  socket.emit('request-base-topping-list', data)
 })
 
-app.ports.sendToppingListOrError.subscribe(data => {
-  socket.emit('topping-list', data)
+app.ports.sendBaseToppingListOrError.subscribe(data => {
+  socket.emit('base-topping-list', data)
 })
 
 app.ports.sendKickGuest.subscribe(data => {
@@ -44,12 +44,12 @@ socket.on('triplet', data => {
   app.ports.receiveTriplet.send(data)
 })
 
-socket.on('request-topping-list', data => {
-  app.ports.receiveToppingListRequest.send(data)
+socket.on('request-base-topping-list', data => {
+  app.ports.receiveBaseToppingListRequest.send(data)
 })
 
-socket.on('topping-list', data => {
-  app.ports.receiveToppingList.send(data)
+socket.on('base-topping-list', data => {
+  app.ports.receiveBaseToppingList.send(data)
 })
 
 socket.on('guest-left', data => {

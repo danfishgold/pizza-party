@@ -17,7 +17,7 @@ import Json.Decode
 import RoomId exposing (RoomId)
 import Socket
 import Stage exposing (Stage(..))
-import Topping exposing (Topping)
+import Topping exposing (BaseTopping, Topping)
 import User exposing (User)
 
 
@@ -41,7 +41,7 @@ type alias PartialGroup =
 type alias Group =
     { roomId : RoomId
     , user : User
-    , toppings : List Topping
+    , baseToppings : List BaseTopping
     }
 
 
@@ -73,7 +73,7 @@ fake =
                 Success
                     { roomId = RoomId.fromString "1"
                     , user = { name = "fake" }
-                    , toppings = Topping.all
+                    , baseToppings = Topping.all
                     }
     }
 
@@ -96,9 +96,9 @@ subscriptions model =
                 (Stage.applyResult always stage >> RoomFinding >> SetState)
 
         RoomJoining ((Waiting partial) as stage) ->
-            Socket.toppingListFromHost
+            Socket.baseToppingListFromHost
                 (Stage.applyResult
-                    (\toppings { roomId, user } -> { roomId = roomId, user = user, toppings = toppings })
+                    (\baseToppings { roomId, user } -> { roomId = roomId, user = user, baseToppings = baseToppings })
                     stage
                     >> RoomJoining
                     >> SetState
@@ -142,19 +142,17 @@ initialPartial roomId =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model.state ) of
-        ( SetState (RoomFinding (Success roomId)), _ ) ->
-            let
-                msg_ =
-                    roomId
-                        |> initialPartial
-                        |> Editing
-                        |> RoomJoining
-                        |> SetState
-            in
-            update msg_ model
-
         ( SetState state, _ ) ->
-            ( { model | state = state }, Cmd.none )
+            let
+                newState =
+                    case state of
+                        RoomFinding (Success roomId) ->
+                            RoomJoining <| Editing <| initialPartial roomId
+
+                        state_ ->
+                            state_
+            in
+            ( { model | state = newState }, Cmd.none )
 
         ( Noop, _ ) ->
             ( model, Cmd.none )
@@ -279,8 +277,8 @@ joiningView stage counts =
                 EditName
                 JoinRoom
 
-        Stage.Out { toppings } ->
-            userView AddSliceCount counts toppings
+        Stage.Out { baseToppings } ->
+            userView AddSliceCount counts baseToppings
 
 
 stageForm : String -> String -> (input -> String) -> Stage input output -> (String -> msg) -> msg -> Html msg
@@ -347,8 +345,8 @@ stageForm prompt buttonText inputToString stage onInput_ onSubmit_ =
 --     text ("Error: " ++ error)
 
 
-userView : (Topping -> Int -> msg) -> Topping.Count -> List Topping -> Html msg
-userView modify count toppings =
+userView : (Topping -> Int -> msg) -> Topping.Count -> List BaseTopping -> Html msg
+userView modify count baseToppings =
     let
         counter topping =
             toppingCounter
@@ -357,7 +355,11 @@ userView modify count toppings =
                 (Count.get topping count)
                 topping
     in
-    List.map counter toppings |> div []
+    count
+        |> Topping.filterZeros
+        |> Topping.toSortedList baseToppings
+        |> List.map counter
+        |> div []
 
 
 toppingCounter : msg -> msg -> Int -> Topping -> Html msg
@@ -383,7 +385,7 @@ toppingCounter decrease increase value topping =
         , style "padding" "5px"
         , style "margin" "10px"
         ]
-        [ span [ style "font-weight" "bold" ] [ text topping.name ]
+        [ span [ style "font-weight" "bold" ] [ text <| Topping.toString topping ]
         , div []
             [ button
                 [ if value == 0 then

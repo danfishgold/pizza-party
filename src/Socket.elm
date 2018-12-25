@@ -1,5 +1,7 @@
 port module Socket exposing
-    ( broadcastSliceTriplet
+    ( baseToppingListFromHost
+    , baseToppingListRequestFromGuest
+    , broadcastSliceTriplet
     , createRoomAsHost
     , createRoomResponseFromServer
     , findRoomAsGuest
@@ -9,16 +11,14 @@ port module Socket exposing
     , kickedOutByHost
     , requestToppingsListFromHost
     , roomFoundResponseFromServer
-    , sendToppingListOrErrorToGuest
+    , sendBaseToppingListOrErrorToGuest
     , sliceTripletsFromGuest
-    , toppingListFromHost
-    , toppingListRequestFromGuest
     )
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)
 import RoomId exposing (RoomId)
-import Topping exposing (Topping)
+import Topping exposing (BaseTopping, Topping)
 import User exposing (User)
 
 
@@ -135,51 +135,51 @@ sliceTripletsFromGuest toMsg =
 -- NEW GUESTS
 
 
-port requestToppingList : Value -> Cmd msg
+port requestBaseToppingList : Value -> Cmd msg
 
 
-port receiveToppingListRequest : (Value -> msg) -> Sub msg
+port receiveBaseToppingListRequest : (Value -> msg) -> Sub msg
 
 
-port sendToppingListOrError : Value -> Cmd msg
+port sendBaseToppingListOrError : Value -> Cmd msg
 
 
-port receiveToppingList : (Value -> msg) -> Sub msg
+port receiveBaseToppingList : (Value -> msg) -> Sub msg
 
 
 requestToppingsListFromHost : User -> Cmd msg
 requestToppingsListFromHost user =
-    requestToppingList (User.encode user)
+    requestBaseToppingList (User.encode user)
 
 
-toppingListRequestFromGuest : (Result Decode.Error User -> msg) -> Sub msg
-toppingListRequestFromGuest toMsg =
-    receiveToppingListRequest
+baseToppingListRequestFromGuest : (Result Decode.Error User -> msg) -> Sub msg
+baseToppingListRequestFromGuest toMsg =
+    receiveBaseToppingListRequest
         (Decode.decodeValue User.decoder >> toMsg)
 
 
-sendToppingListOrErrorToGuest : Result String (List Topping) -> Cmd msg
-sendToppingListOrErrorToGuest result =
+sendBaseToppingListOrErrorToGuest : Result String (List BaseTopping) -> Cmd msg
+sendBaseToppingListOrErrorToGuest result =
     case result of
         Ok toppings ->
             toppings
-                |> Encode.list Topping.encode
+                |> Encode.list Topping.encodeBaseTopping
                 |> (\toppingList ->
                         Encode.object [ ( "toppings", toppingList ) ]
-                            |> sendToppingListOrError
+                            |> sendBaseToppingListOrError
                    )
 
         Err error ->
             Encode.object [ ( "error", Encode.string error ) ]
-                |> sendToppingListOrError
+                |> sendBaseToppingListOrError
 
 
-toppingListFromHost : (Result String (List Topping) -> msg) -> Sub msg
-toppingListFromHost toMsg =
-    receiveToppingList
+baseToppingListFromHost : (Result String (List BaseTopping) -> msg) -> Sub msg
+baseToppingListFromHost toMsg =
+    receiveBaseToppingList
         (decodeResult
             (Decode.oneOf
-                [ Decode.field "toppings" (Decode.list Topping.decoder) |> Decode.map Ok
+                [ Decode.field "toppings" (Decode.list Topping.baseToppingDecoder) |> Decode.map Ok
                 , Decode.field "error" Decode.string |> Decode.map Err
                 ]
             )
