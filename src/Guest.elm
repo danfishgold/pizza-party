@@ -225,11 +225,7 @@ update msg model =
                 ( model, Cmd.none )
 
         _ ->
-            Debug.todo <|
-                "got message "
-                    ++ Debug.toString msg
-                    ++ " with model "
-                    ++ Debug.toString model
+            ( model, Cmd.none )
 
 
 

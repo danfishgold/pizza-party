@@ -151,7 +151,7 @@ update msg model =
                 ( model, Cmd.none )
 
         SendToppingList user ->
-            if List.member user (Debug.log "users" model.users) then
+            if List.member user model.users then
                 ( model
                 , Socket.sendBaseToppingListOrErrorToGuest (Err "Name already exists")
                 )
