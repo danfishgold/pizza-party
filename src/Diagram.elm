@@ -9,6 +9,13 @@ import Svg.Attributes exposing (d, fill, height, stroke, textAnchor, transform, 
 import Topping exposing (Topping)
 
 
+type alias SliceGroup =
+    { topping : Topping
+    , startAngle : Float
+    , endAngle : Float
+    }
+
+
 pies : Float -> Config.Slices -> Topping.Count -> List (Svg msg)
 pies radius config toppingCount =
     let
@@ -42,14 +49,6 @@ pies radius config toppingCount =
 pie : Float -> Int -> List Topping.Pair -> Svg msg
 pie radius slicesPerPie pieCount =
     let
-        slicePositionInPie ( topping, count ) ( prevs, totalSliceCount ) =
-            ( ( topping, totalSliceCount + 1, count ) :: prevs
-            , totalSliceCount + count
-            )
-
-        sliceView ( topping, start, count ) =
-            slice radius slicesPerPie start count topping
-
         translation =
             "translate("
                 ++ String.fromFloat (radius + 1)
@@ -59,9 +58,8 @@ pie radius slicesPerPie pieCount =
     in
     pieCount
         |> List.sortBy (negate << Tuple.second)
-        |> List.foldl slicePositionInPie ( [], 0 )
-        |> Tuple.first
-        |> List.map sliceView
+        |> sliceGroupsFromPairs slicesPerPie
+        |> List.map (sliceGroupView radius)
         |> g [ transform translation ]
         |> List.singleton
         |> svg
@@ -71,23 +69,39 @@ pie radius slicesPerPie pieCount =
             ]
 
 
-slice : Float -> Int -> Int -> Int -> Topping -> Svg msg
-slice radius slicesPerPie slicesStart sliceCount topping =
-    if sliceCount == 0 then
-        g [] []
+sliceGroupsFromPairs : Int -> List Topping.Pair -> List SliceGroup
+sliceGroupsFromPairs slicesPerPie pieCount =
+    let
+        sliceRange =
+            degrees 360 / toFloat slicesPerPie
 
-    else
-        let
-            startAngle =
-                degrees 360 * toFloat (slicesStart - 1) / toFloat slicesPerPie
+        offset =
+            degrees -90
 
-            endAngle =
-                startAngle + degrees 360 * toFloat sliceCount / toFloat slicesPerPie
-        in
-        g []
-            [ arc radius startAngle endAngle Color.white
-            , arcTitle radius startAngle endAngle (Topping.toString topping) Color.black
-            ]
+        helper startIndex counts =
+            case counts of
+                [] ->
+                    []
+
+                ( _, 0 ) :: tl ->
+                    helper startIndex tl
+
+                ( topping, count ) :: tl ->
+                    { topping = topping
+                    , startAngle = offset + toFloat startIndex * sliceRange
+                    , endAngle = offset + toFloat (startIndex + count) * sliceRange
+                    }
+                        :: helper (startIndex + count) tl
+    in
+    helper 0 pieCount
+
+
+sliceGroupView : Float -> SliceGroup -> Svg msg
+sliceGroupView radius sliceGroup =
+    g []
+        [ arc radius sliceGroup.startAngle sliceGroup.endAngle Color.white
+        , arcTitle radius sliceGroup Color.black
+        ]
 
 
 arc : Float -> Float -> Float -> Color -> Svg msg
@@ -127,8 +141,8 @@ arc r startAngle endAngle color =
         []
 
 
-arcTitle : Float -> Float -> Float -> String -> Color -> Svg msg
-arcTitle r startAngle endAngle title color =
+arcTitle : Float -> SliceGroup -> Color -> Svg msg
+arcTitle r { startAngle, endAngle, topping } color =
     let
         center =
             arcCenter r startAngle endAngle
@@ -139,7 +153,7 @@ arcTitle r startAngle endAngle title color =
         , textAnchor "middle"
         , fill <| Color.toCssString color
         ]
-        [ text title ]
+        [ text <| Topping.toString topping ]
 
 
 arcCenter : Float -> Float -> Float -> { x : Float, y : Float }
