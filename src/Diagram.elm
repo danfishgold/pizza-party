@@ -4,8 +4,8 @@ import Color exposing (Color)
 import Config
 import Count
 import Division
-import Svg exposing (Svg, g, path, svg, text, text_)
-import Svg.Attributes exposing (d, fill, height, stroke, textAnchor, textDecoration, textLength, transform, width, x, y)
+import Svg exposing (Svg, circle, g, path, svg, text, text_)
+import Svg.Attributes exposing (cx, cy, d, fill, height, r, stroke, textAnchor, textDecoration, textLength, transform, width, x, y)
 import Topping exposing (Topping)
 
 
@@ -111,40 +111,45 @@ sliceGroupView radius sliceGroup =
 
 
 arc : Float -> Float -> Float -> Color -> Svg msg
-arc r startAngle endAngle color =
-    let
-        start =
-            polarToCartesian r startAngle
+arc rad startAngle endAngle color =
+    if startAngle == endAngle || startAngle == endAngle - 2 * pi then
+        circle
+            [ cx "0"
+            , cy "0"
+            , r <| String.fromFloat rad
+            , stroke "black"
+            , fill <| Color.toCssString color
+            ]
+            []
 
-        end =
-            polarToCartesian r endAngle
+    else
+        let
+            start =
+                polarToCartesian rad startAngle
 
-        arcSweep =
-            if endAngle - startAngle <= degrees 180 then
-                0
+            end =
+                polarToCartesian rad endAngle
 
-            else
-                1
+            arcSweep =
+                if endAngle - startAngle <= degrees 180 then
+                    0
 
-        pathComponents =
-            if startAngle == endAngle || startAngle == endAngle - 2 * pi then
+                else
+                    1
+
+            pathComponents =
                 [ pathCommand "M" [ start.x, start.y ]
-                , pathCommand "A" [ r, r, 0, arcSweep, 1, end.x, end.y ]
-                ]
-
-            else
-                [ pathCommand "M" [ start.x, start.y ]
-                , pathCommand "A" [ r, r, 0, arcSweep, 1, end.x, end.y ]
+                , pathCommand "A" [ rad, rad, 0, arcSweep, 1, end.x, end.y ]
                 , pathCommand "L" [ 0, 0 ]
                 , pathCommand "Z" []
                 ]
-    in
-    path
-        [ pathComponents |> String.join " " |> d
-        , stroke "black"
-        , fill <| Color.toCssString color
-        ]
-        []
+        in
+        path
+            [ pathComponents |> String.join " " |> d
+            , stroke "black"
+            , fill <| Color.toCssString color
+            ]
+            []
 
 
 arcTitle : Float -> SliceGroup -> Color -> Svg msg
