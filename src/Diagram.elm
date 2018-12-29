@@ -51,10 +51,10 @@ pie : Float -> Int -> List Topping.Pair -> Svg msg
 pie radius slicesPerPie pieCount =
     let
         wd =
-            2 * radius + 300
+            2 * radius + 2
 
         ht =
-            2 * radius + 80
+            2 * radius + 2
 
         translation =
             "translate("
@@ -160,10 +160,52 @@ arc rad startAngle endAngle color =
 
 arcTitle : Float -> SliceGroup -> Color -> String -> Svg msg
 arcTitle r { startAngle, endAngle, topping } color clipper =
-    List.range 0 (floor <| 20 * r)
-        |> List.map (\i -> toFloat i / 20)
-        |> List.map (\f -> aText (Topping.toString topping) Color.black 0 (2 * r * (f - 0.5)) (f * 360))
+    let
+        rs =
+            frange 0 6 6 |> List.map (\idx -> r * cos idx)
+
+        thetas =
+            linspace startAngle (angleAbove startAngle endAngle) (2 * pi / 24)
+
+        pts =
+            List.map2 polarToCartesian rs thetas
+
+        angles =
+            frange 0 100 6 |> List.map (\idx -> 360 * sin idx)
+    in
+    List.map2 (\{ x, y } angle -> aText (Topping.toString topping) Color.black x y angle)
+        pts
+        angles
         |> g [ Clip.clipPath clipper ]
+
+
+frange : Float -> Float -> Int -> List Float
+frange start end steps =
+    if start == end then
+        []
+
+    else
+        List.range 0 steps
+            |> List.map
+                (\idx ->
+                    start + (end - start) * toFloat idx / toFloat steps
+                )
+
+
+linspace : Float -> Float -> Float -> List Float
+linspace start end diff =
+    if start == end then
+        [ start ]
+
+    else
+        let
+            count =
+                floor <| (end - start) / diff
+
+            fakeEnd =
+                start + toFloat count * diff
+        in
+        frange start fakeEnd count
 
 
 aText : String -> Color -> Float -> Float -> Float -> Svg msg
@@ -171,7 +213,7 @@ aText title color x_ y_ angle =
     text_
         [ x <| String.fromFloat x_
         , y <| String.fromFloat y_
-        , fontSize "0.3em"
+        , fontSize "0.7em"
         , textAnchor "middle"
         , fill <| Color.toCssString color
         , transform <| "rotate(" ++ String.fromFloat angle ++ " " ++ String.fromFloat x_ ++ " " ++ String.fromFloat y_ ++ ")"
@@ -267,3 +309,12 @@ mod2pi angle =
 
     else
         angle
+
+
+angleAbove : Float -> Float -> Float
+angleAbove start end =
+    if end < start then
+        angleAbove start (end + 2 * pi)
+
+    else
+        end
