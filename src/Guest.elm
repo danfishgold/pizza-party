@@ -1,6 +1,7 @@
 module Guest exposing
     ( Model
     , Msg
+    , initWithRoomId
     , initialModel
     , subscriptions
     , update
@@ -63,6 +64,15 @@ initialModel =
     { state = RoomFinding <| Editing <| RoomId.fromString ""
     , counts = Topping.emptyCount
     }
+
+
+initWithRoomId : RoomId -> ( Model, Cmd Msg )
+initWithRoomId roomId =
+    ( { state = RoomFinding (Waiting roomId)
+      , counts = Topping.emptyCount
+      }
+    , Socket.findRoomAsGuest roomId
+    )
 
 
 fake : Model
