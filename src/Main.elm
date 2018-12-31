@@ -1,10 +1,13 @@
 module Main exposing (main)
 
-import Browser exposing (document)
+import Browser exposing (application)
+import Browser.Navigation
 import Guest
 import Host
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
+import RoomId
+import Url exposing (Url)
 
 
 type Role
@@ -14,23 +17,46 @@ type Role
 
 
 type alias Model =
-    { role : Role }
+    { role : Role
+    , key : Browser.Navigation.Key
+    }
 
 
 type Msg
     = SetRole Role
     | GuestMsg Guest.Msg
     | HostMsg Host.Msg
+    | SetUrl Url
+    | UrlRequest Browser.UrlRequest
 
 
-init : () -> ( Model, Cmd Msg )
-init () =
-    ( { role = Undetermined }, Cmd.none )
+init : () -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
+init () url key =
+    case url.fragment of
+        Nothing ->
+            ( { role = Undetermined
+              , key = key
+              }
+            , Cmd.none
+            )
+
+        Just roomIdString ->
+            let
+                ( guestModel, guestCmd ) =
+                    Guest.initWithRoomId (RoomId.fromString roomIdString)
+            in
+            ( { role = Guest guestModel
+              , key = key
+              }
+            , Cmd.map GuestMsg guestCmd
+            )
 
 
-fake : ( Model, Cmd Msg )
-fake =
-    ( { role = Host Host.fake }, Cmd.none )
+fake : () -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
+fake () url key =
+    ( { role = Host Host.fake, key = key }
+    , Cmd.none
+    )
 
 
 subscriptions : Model -> Sub Msg
@@ -89,8 +115,10 @@ view model =
 
 main : Program () Model Msg
 main =
-    document
+    application
         { init = init
+        , onUrlChange = SetUrl
+        , onUrlRequest = UrlRequest
         , subscriptions = subscriptions
         , update = update
         , view = \model -> { body = [ view model ], title = "Pizza Party" }
