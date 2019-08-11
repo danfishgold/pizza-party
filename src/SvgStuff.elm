@@ -1,45 +1,18 @@
 module SvgStuff exposing
     ( angleAbove
     , arc
-    , clip
-    , clipPath
     , frange
     , linspace
     , middleAngle
     , mod2pi
     , pathCommand
     , polarToCartesian
-    , symbol
-    , useSymbol
+    , translate
     )
 
 import Color exposing (Color)
-import Svg exposing (Svg, circle, defs, path)
-import Svg.Attributes exposing (cx, cy, d, fill, id, r, stroke, strokeWidth)
-
-
-clip : String -> List (Svg msg) -> Svg msg
-clip name clipper =
-    defs []
-        [ Svg.clipPath [ id name ] clipper
-        ]
-
-
-clipPath : String -> Svg.Attribute msg
-clipPath name =
-    Svg.Attributes.clipPath <| "url(#" ++ name ++ ")"
-
-
-symbol : String -> List (Svg msg) -> Svg msg
-symbol name shape =
-    defs []
-        [ Svg.symbol [ id name ] shape
-        ]
-
-
-useSymbol : String -> List (Svg.Attribute msg) -> Svg msg
-useSymbol name attrs =
-    Svg.use (Svg.Attributes.xlinkHref ("#" ++ name) :: attrs) []
+import Svg exposing (Svg, circle, path)
+import Svg.Attributes exposing (cx, cy, d, fill, r, stroke, strokeWidth)
 
 
 arc : Float -> Float -> Float -> Color -> Color -> Float -> Svg msg
@@ -118,6 +91,7 @@ pathCommand command values =
     command :: List.map String.fromFloat values |> String.join " "
 
 
+mod2pi : Float -> Float
 mod2pi angle =
     if angle >= 3 / 2 * pi then
         mod2pi (angle - 2 * pi)
@@ -165,3 +139,12 @@ linspace start end diff =
                 start + toFloat count * diff
         in
         frange start fakeEnd count
+
+
+translate : Float -> Float -> String
+translate x y =
+    "translate("
+        ++ String.fromFloat x
+        ++ ","
+        ++ String.fromFloat y
+        ++ ")"

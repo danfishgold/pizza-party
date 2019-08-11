@@ -1,6 +1,5 @@
 module Main exposing (main)
 
-import Background
 import Browser exposing (application)
 import Browser.Dom
 import Browser.Events
@@ -25,32 +24,7 @@ type Role
 type alias Model =
     { role : Role
     , key : Browser.Navigation.Key
-    , size : Size
     }
-
-
-type alias Size =
-    { width : Float, height : Float }
-
-
-getViewport : Cmd Msg
-getViewport =
-    Browser.Dom.getViewport
-        |> Task.map
-            (\{ viewport } ->
-                { width = viewport.width
-                , height = viewport.height
-                }
-            )
-        |> Task.attempt
-            (\res ->
-                case res of
-                    Ok sz ->
-                        SetSize sz
-
-                    Err error ->
-                        NoOp
-            )
 
 
 type Msg
@@ -59,8 +33,6 @@ type Msg
     | HostMsg Host.Msg
     | SetUrl Url
     | Whatever Browser.UrlRequest
-    | SetSize Size
-    | NoOp
 
 
 init : () -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
@@ -69,9 +41,8 @@ init () url key =
         Nothing ->
             ( { role = Undetermined
               , key = key
-              , size = { width = 500, height = 500 }
               }
-            , getViewport
+            , Cmd.none
             )
 
         Just roomIdString ->
@@ -81,39 +52,29 @@ init () url key =
             in
             ( { role = Guest guestModel
               , key = key
-              , size = { width = 500, height = 500 }
               }
-            , Cmd.batch [ Cmd.map GuestMsg guestCmd, getViewport ]
+            , Cmd.map GuestMsg guestCmd
             )
 
 
 fake : () -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 fake () url key =
-    ( { role = Host Host.fake, key = key, size = { width = 500, height = 500 } }
-    , getViewport
+    ( { role = Host Host.fake, key = key }
+    , Cmd.none
     )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ Browser.Events.onResize
-            (\wd ht ->
-                SetSize
-                    { width = toFloat wd
-                    , height = toFloat ht
-                    }
-            )
-        , case model.role of
-            Undetermined ->
-                Sub.none
+    case model.role of
+        Undetermined ->
+            Sub.none
 
-            Host host ->
-                Host.subscriptions host |> Sub.map HostMsg
+        Host host ->
+            Host.subscriptions host |> Sub.map HostMsg
 
-            Guest guest ->
-                Guest.subscriptions guest |> Sub.map GuestMsg
-        ]
+        Guest guest ->
+            Guest.subscriptions guest |> Sub.map GuestMsg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -136,12 +97,6 @@ update msg model =
             in
             ( { model | role = Guest newRole }, Cmd.map GuestMsg subCmd )
 
-        ( _, SetSize sz ) ->
-            ( { model | size = sz }, Cmd.none )
-
-        ( _, NoOp ) ->
-            ( model, Cmd.none )
-
         _ ->
             Debug.todo "Wrong state"
 
@@ -162,7 +117,6 @@ view model =
 
             Guest guest ->
                 Guest.view guest |> Html.map GuestMsg
-        , Background.background model.size.width model.size.height
         ]
 
 
