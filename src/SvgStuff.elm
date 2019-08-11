@@ -55,28 +55,21 @@ arc rad startAngle endAngle fillColor strokeColor strokeWidth_ =
             , stroke <| Color.toCssString strokeColor
             , strokeWidth <| String.fromFloat strokeWidth_
             , fill <| Color.toCssString fillColor
+            , Svg.Attributes.strokeLinejoin "round"
             ]
             []
 
 
 middleAngle : Float -> Float -> Float
 middleAngle startAngle endAngle =
-    if startAngle == endAngle then
-        startAngle
+    if mod2pi (endAngle - startAngle) == 0 then
+        pi / 2
 
     else if endAngle <= startAngle then
         middleAngle startAngle (endAngle + 2 * pi)
 
     else
-        let
-            middle =
-                startAngle + (endAngle - startAngle) / 2
-        in
-        if middle == 0 || middle == pi then
-            middleAngle (min startAngle endAngle) middle
-
-        else
-            middle
+        startAngle + (endAngle - startAngle) / 2
 
 
 polarToCartesian : Float -> Float -> { x : Float, y : Float }

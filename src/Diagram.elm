@@ -4,8 +4,8 @@ import Color exposing (Color)
 import Config
 import Count
 import Division
-import Svg exposing (Svg, g, path, svg, text, text_)
-import Svg.Attributes exposing (d, fill, height, stroke, textAnchor, textDecoration, transform, width, x, y)
+import Svg exposing (Svg, circle, g, svg, text, text_)
+import Svg.Attributes exposing (cx, cy, dominantBaseline, fill, height, r, textAnchor, transform, width, x, y)
 import SvgStuff as S
 import Topping exposing (Topping)
 
@@ -98,57 +98,55 @@ sliceGroupsFromPairs slicesPerPie pieCount =
 sliceGroupView : Float -> SliceGroup -> Svg msg
 sliceGroupView radius sliceGroup =
     g []
-        [ S.arc radius sliceGroup.startAngle sliceGroup.endAngle Color.white Color.black 1
+        [ S.arc radius sliceGroup.startAngle sliceGroup.endAngle Color.orange Color.white 5
         , arcTitle radius sliceGroup Color.black
         ]
 
 
 arcTitle : Float -> SliceGroup -> Color -> Svg msg
 arcTitle r { startAngle, endAngle, topping } color =
-    if abs (endAngle - startAngle) == 2 * pi || startAngle == endAngle then
-        text_
-            [ x "0"
-            , y "0"
-            , textAnchor "middle"
+    let
+        angle =
+            S.middleAngle startAngle endAngle
+
+        p0 =
+            S.polarToCartesian (1.15 * r) angle
+
+        anchor =
+            if -pi / 2 < angle && angle < pi / 2 then
+                "start"
+
+            else if angle == -pi / 2 || angle == pi / 2 then
+                "middle"
+
+            else
+                "end"
+
+        baseline =
+            if 0 < angle && angle < pi then
+                "hanging"
+
+            else if angle == 0 || angle == pi then
+                "middle"
+
+            else
+                "baseline"
+    in
+    g []
+        [ text_
+            [ x <| String.fromFloat p0.x
+            , y <| String.fromFloat p0.y
+            , textAnchor anchor
+            , dominantBaseline baseline
+            , fill <| Color.toCssString color
             ]
             [ text <| Topping.toString topping ]
 
-    else
-        let
-            angle =
-                S.middleAngle startAngle endAngle
-
-            pt1 =
-                S.polarToCartesian (2 / 3 * r) angle
-
-            pt2 =
-                S.polarToCartesian (4 / 3 * r) angle
-
-            isOnRight =
-                -pi / 2 <= angle && angle <= pi / 2
-        in
-        g []
-            [ path
-                [ d <|
-                    String.join " " <|
-                        [ S.pathCommand "M" [ pt1.x, pt1.y ]
-                        , S.pathCommand "L" [ pt2.x, pt2.y ]
-                        ]
-                , stroke "black"
-                , fill "none"
-                ]
-                []
-            , text_
-                [ x <| String.fromFloat pt2.x
-                , y <| String.fromFloat (pt2.y - 1.5)
-                , textAnchor <|
-                    if isOnRight then
-                        "start"
-
-                    else
-                        "end"
-                , textDecoration "underline"
-                , fill <| Color.toCssString color
-                ]
-                [ text <| Topping.toString topping ]
-            ]
+        -- , circle
+        --     [ cx <| String.fromFloat p0.x
+        --     , cy <| String.fromFloat p0.y
+        --     , Svg.Attributes.r "2"
+        --     , fill "red"
+        --     ]
+        --     []
+        ]

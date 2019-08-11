@@ -60,8 +60,14 @@ initialModel =
 fake : Model
 fake =
     { initialModel
-        | users = [ User "Fake1", User "Fake2" ]
+        | users = [ User "Fake" ]
         , room = Success (RoomId.fromString "1")
+        , hostCount =
+            Topping.all
+                |> List.take 5
+                |> List.map Topping.fromBase
+                |> List.indexedMap (\i topping -> ( topping, 1 + i // 2 ))
+                |> Topping.countFromList
     }
 
 

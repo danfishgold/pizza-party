@@ -90,6 +90,7 @@ all =
     , "Extra Cheese"
     , "Tuna"
     ]
+        |> List.sort
         |> List.map BaseTopping
 
 
