@@ -24,7 +24,8 @@ import Json.Encode as Encode
 
 
 type alias BaseTopping =
-    { name : String }
+    { name : String
+    }
 
 
 type alias Topping =
@@ -99,11 +100,6 @@ type alias Count =
 countFromList : List ( Topping, Int ) -> Count
 countFromList =
     Count.fromList key fromKey
-
-
-countFromKeyList : List ( Key, Int ) -> Count
-countFromKeyList =
-    Count.fromKeyList key fromKey
 
 
 emptyCount : Count

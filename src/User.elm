@@ -5,7 +5,8 @@ import Json.Encode as Encode
 
 
 type alias User =
-    { name : String }
+    { name : String
+    }
 
 
 decoder : Decoder User

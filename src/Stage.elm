@@ -120,27 +120,11 @@ setInput newInput stage =
 update : (a -> input -> input) -> a -> Stage input output -> Stage input output
 update fn a stage =
     case data stage of
-        Out output ->
-            Debug.todo <|
-                "Tried to udpdate "
-                    ++ Debug.toString stage
-                    ++ " with "
-                    ++ Debug.toString a
+        Out _ ->
+            stage
 
         In input ->
             setInput (fn a input) stage
-
-
-succeed : (input -> output) -> Stage input output -> Stage input output
-succeed fn stage =
-    case stage of
-        Waiting input ->
-            Success (fn input)
-
-        _ ->
-            Debug.todo <|
-                "Tried to succeed with "
-                    ++ Debug.toString stage
 
 
 applyResult : (extra -> input -> output) -> Stage input output -> Result String extra -> Stage input output
@@ -155,8 +139,4 @@ applyResult joiningFn stage result =
                     Failure input error_
 
         _ ->
-            Debug.todo <|
-                "Tried to use result "
-                    ++ Debug.toString result
-                    ++ " with "
-                    ++ Debug.toString stage
+            stage

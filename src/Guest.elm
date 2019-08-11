@@ -9,10 +9,9 @@ module Guest exposing
     , view
     )
 
-import Browser.Events
 import Count
-import Html exposing (Html, a, button, div, form, input, p, span, text)
-import Html.Attributes exposing (disabled, href, style, value)
+import Html exposing (Html, button, div, form, input, span, text)
+import Html.Attributes exposing (disabled, style, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode
 import RoomId exposing (RoomId)
@@ -88,24 +87,14 @@ fake =
     }
 
 
-joinResult : Result a a -> a
-joinResult res =
-    case res of
-        Ok a ->
-            a
-
-        Err a ->
-            a
-
-
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.state of
-        RoomFinding ((Waiting roomId) as stage) ->
+        RoomFinding ((Waiting _) as stage) ->
             Socket.roomFoundResponseFromServer
                 (Stage.applyResult always stage >> RoomFinding >> SetState)
 
-        RoomJoining ((Waiting partial) as stage) ->
+        RoomJoining ((Waiting _) as stage) ->
             Socket.baseToppingListFromHost
                 (Stage.applyResult
                     (\baseToppings { roomId, user } -> { roomId = roomId, user = user, baseToppings = baseToppings })
@@ -114,7 +103,7 @@ subscriptions model =
                     >> SetState
                 )
 
-        RoomJoining (Success group) ->
+        RoomJoining (Success _) ->
             Sub.batch
                 [ Socket.sliceTripletsFromGuest (onTripletUpdate model)
                 , Socket.hostDisconnectionsFromServer HostDisconnected
@@ -260,7 +249,7 @@ view model =
 findingView : Stage RoomId RoomId -> Html Msg
 findingView stage =
     case Stage.data stage of
-        Stage.In roomId ->
+        Stage.In _ ->
             stageForm "Enter the room number"
                 "Find Room"
                 RoomId.toString
@@ -316,39 +305,6 @@ stageForm prompt buttonText inputToString stage onInput_ onSubmit_ =
 
         Stage.Out _ ->
             Debug.todo "Tried to show form on Success state"
-
-
-
---     form
---         [ onSubmit FindRoom ]
---         [ text "Enter your name"
---         , input
---             [ onInput EditName
---               -- , value model.user.name
---             ]
---             []
---         , text "Enter the room ID"
---         , input
---             [ onInput (RoomId.fromString >> EditRoomId)
---               -- , value (RoomId.toString model.roomId)
---             ]
---             []
---         , button
---             [--disabled (String.isEmpty model.user.name)
---             ]
---             [ text "Join" ]
---         ]
--- RoomJoining _ ->
---     div []
---         [ p [] [ text "Joining..." ]
---         , p []
---             [ text "(Make sure the host is on "
---             , a [ href "https://pizzaparty.glitch.me" ] [ text "pizzaparty.glitch.me" ]
---             , text ", otherwise this won't work.)"
---             ]
---         ]
--- DeniedAccess _ error ->
---     text ("Error: " ++ error)
 
 
 userView : (Topping -> Int -> msg) -> Topping.Count -> List BaseTopping -> Html msg

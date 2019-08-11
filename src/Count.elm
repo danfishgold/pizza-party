@@ -39,18 +39,6 @@ setDict (Count c) newDict =
     Count { c | dict = newDict }
 
 
-mapValues : (Int -> Int) -> Count key comparable -> Count key comparable
-mapValues fn ((Count { dict }) as c) =
-    dict
-        |> Dict.map (always fn)
-        |> setDict c
-
-
-filterValues : (Int -> Bool) -> Count key comparable -> Count key comparable
-filterValues fn ((Count { dict }) as c) =
-    dict |> Dict.filter (always fn) |> setDict c
-
-
 splitValues : (Int -> ( Int, Int )) -> Count key comparable -> ( Count key comparable, Count key comparable )
 splitValues splitFn (Count c) =
     c.dict
@@ -101,11 +89,6 @@ map2 op (Count opt1) (Count opt2) =
 join : Count key comparable -> Count key comparable -> Count key comparable
 join =
     map2 (+)
-
-
-sum : Count key comparable -> Int
-sum (Count { dict }) =
-    Dict.foldl (\_ cnt partialSum -> partialSum + abs cnt) 0 dict
 
 
 toList : Count key comparable -> List ( key, Int )

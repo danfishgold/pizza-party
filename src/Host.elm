@@ -1,4 +1,4 @@
-port module Host exposing
+module Host exposing
     ( Model
     , Msg
     , fake
@@ -13,7 +13,7 @@ import Count
 import Diagram
 import Dict exposing (Dict)
 import Guest exposing (userView)
-import Html exposing (Html, a, button, div, h1, h2, p, span, text)
+import Html exposing (Html, a, button, div, h1, h2, p, text)
 import Html.Attributes exposing (href)
 import Html.Events exposing (onClick)
 import RoomId exposing (RoomId)

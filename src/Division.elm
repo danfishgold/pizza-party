@@ -233,11 +233,6 @@ trySplitting config ( topping, count ) rest semipies =
 --
 
 
-isEmpty : Pair -> Bool
-isEmpty ( _, n ) =
-    n == 0
-
-
 sortKey : Pair -> Int
 sortKey ( _, count ) =
     -count

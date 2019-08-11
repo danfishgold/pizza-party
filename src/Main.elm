@@ -1,17 +1,12 @@
 module Main exposing (main)
 
 import Browser exposing (application)
-import Browser.Dom
-import Browser.Events
 import Browser.Navigation
 import Guest
 import Host
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import RoomId
-import Svg as S
-import Svg.Attributes as A
-import Task
 import Url exposing (Url)
 
 
@@ -58,7 +53,7 @@ init () url key =
 
 
 fake : () -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
-fake () url key =
+fake () _ key =
     ( { role = Host Host.fake, key = key }
     , Cmd.none
     )
@@ -98,7 +93,7 @@ update msg model =
             ( { model | role = Guest newRole }, Cmd.map GuestMsg subCmd )
 
         _ ->
-            Debug.todo "Wrong state"
+            ( model, Cmd.none )
 
 
 view : Model -> Html Msg
