@@ -4,8 +4,8 @@ import Color exposing (Color)
 import Config
 import Count
 import Division
-import Svg exposing (Svg, circle, g, svg, text, text_)
-import Svg.Attributes exposing (cx, cy, dominantBaseline, fill, height, r, textAnchor, transform, width, x, y)
+import Svg exposing (Svg, g, svg, text, text_)
+import Svg.Attributes exposing (dominantBaseline, fill, height, textAnchor, transform, width, x, y)
 import SvgStuff as S
 import Topping exposing (Topping)
 
@@ -141,12 +141,4 @@ arcTitle r { startAngle, endAngle, topping } color =
             , fill <| Color.toCssString color
             ]
             [ text <| Topping.toString topping ]
-
-        -- , circle
-        --     [ cx <| String.fromFloat p0.x
-        --     , cy <| String.fromFloat p0.y
-        --     , Svg.Attributes.r "2"
-        --     , fill "red"
-        --     ]
-        --     []
         ]

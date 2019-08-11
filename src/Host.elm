@@ -8,6 +8,7 @@ module Host exposing
     , view
     )
 
+import Browser.Navigation as Nav
 import Config exposing (Config)
 import Count
 import Diagram
@@ -17,6 +18,7 @@ import Html exposing (Html, a, button, div, h1, h2, p, text)
 import Html.Attributes exposing (href)
 import Html.Events exposing (onClick)
 import RoomId exposing (RoomId)
+import Route
 import Socket
 import Stage exposing (Stage(..))
 import Topping exposing (BaseTopping, Topping)
@@ -57,11 +59,11 @@ initialModel =
     }
 
 
-fake : Model
-fake =
+fake : RoomId -> Model
+fake roomId =
     { initialModel
         | users = [ User "Fake" ]
-        , room = Success (RoomId.fromString "1")
+        , room = Success roomId
         , hostCount =
             Topping.all
                 |> List.take 5
@@ -104,8 +106,8 @@ subscriptions model =
             Sub.none
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Nav.Key -> Msg -> Model -> ( Model, Cmd Msg )
+update key msg model =
     case msg of
         StartRoom ->
             case model.room of
@@ -168,7 +170,14 @@ update msg model =
                 )
 
         SetSocketRoom room ->
-            ( { model | room = room }, Cmd.none )
+            ( { model | room = room }
+              -- , case room of
+              --     Success roomId ->
+              --         Route.push key (Route.Room roomId)
+              --     _ ->
+              --         Cmd.none
+            , Cmd.none
+            )
 
         GuestDisconnected user ->
             ( removeGuest user model, Cmd.none )

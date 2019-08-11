@@ -12,6 +12,17 @@ db.set('sessions', []).write()
 app.use(express.static('client'))
 
 app.get('/', function(request, response) {
+  console.log('url: ', request.url)
+  response.sendFile(__dirname + '/client/index.html')
+})
+
+app.get('/fake/room/:roomId', function(request, response) {
+  console.log('url: ', request.url)
+  response.sendFile(__dirname + '/client/index.html')
+})
+
+app.get('/room/:roomId', function(request, response) {
+  console.log('url: ', request.url)
   response.sendFile(__dirname + '/client/index.html')
 })
 

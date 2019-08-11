@@ -1,12 +1,12 @@
 module Main exposing (main)
 
 import Browser exposing (application)
-import Browser.Navigation
+import Browser.Navigation as Nav
 import Guest
 import Host
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
-import RoomId
+import Route exposing (Route)
 import Url exposing (Url)
 
 
@@ -18,7 +18,7 @@ type Role
 
 type alias Model =
     { role : Role
-    , key : Browser.Navigation.Key
+    , key : Nav.Key
     }
 
 
@@ -26,24 +26,33 @@ type Msg
     = SetRole Role
     | GuestMsg Guest.Msg
     | HostMsg Host.Msg
-    | SetUrl Url
-    | Whatever Browser.UrlRequest
+    | UrlChanged Url
+    | LinkClicked Browser.UrlRequest
 
 
-init : () -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
+type alias Flags =
+    ()
+
+
+init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init () url key =
-    case url.fragment of
-        Nothing ->
+    modelFromRoute key (Route.parse url |> Maybe.withDefault Route.Home)
+
+
+modelFromRoute : Nav.Key -> Route -> ( Model, Cmd Msg )
+modelFromRoute key route =
+    case route of
+        Route.Home ->
             ( { role = Undetermined
               , key = key
               }
             , Cmd.none
             )
 
-        Just roomIdString ->
+        Route.Room roomId ->
             let
                 ( guestModel, guestCmd ) =
-                    Guest.initWithRoomId (RoomId.fromString roomIdString)
+                    Guest.initWithRoomId roomId
             in
             ( { role = Guest guestModel
               , key = key
@@ -51,12 +60,10 @@ init () url key =
             , Cmd.map GuestMsg guestCmd
             )
 
-
-fake : () -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
-fake () _ key =
-    ( { role = Host Host.fake, key = key }
-    , Cmd.none
-    )
+        Route.Fake roomId ->
+            ( { role = Host (Host.fake roomId), key = key }
+            , Cmd.none
+            )
 
 
 subscriptions : Model -> Sub Msg
@@ -66,10 +73,10 @@ subscriptions model =
             Sub.none
 
         Host host ->
-            Host.subscriptions host |> Sub.map HostMsg
+            Sub.map HostMsg (Host.subscriptions host)
 
         Guest guest ->
-            Guest.subscriptions guest |> Sub.map GuestMsg
+            Sub.map GuestMsg (Guest.subscriptions guest)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -78,22 +85,39 @@ update msg model =
         ( Undetermined, SetRole role ) ->
             ( { model | role = role }, Cmd.none )
 
+        ( _, SetRole _ ) ->
+            ( model, Cmd.none )
+
         ( Host subModel, HostMsg subMsg ) ->
             let
                 ( newRole, subCmd ) =
-                    Host.update subMsg subModel
+                    Host.update model.key subMsg subModel
             in
             ( { model | role = Host newRole }, Cmd.map HostMsg subCmd )
+
+        ( _, HostMsg _ ) ->
+            ( model, Cmd.none )
 
         ( Guest subModel, GuestMsg subMsg ) ->
             let
                 ( newRole, subCmd ) =
-                    Guest.update subMsg subModel
+                    Guest.update model.key subMsg subModel
             in
             ( { model | role = Guest newRole }, Cmd.map GuestMsg subCmd )
 
-        _ ->
+        ( _, GuestMsg _ ) ->
             ( model, Cmd.none )
+
+        ( _, UrlChanged _ ) ->
+            ( model, Cmd.none )
+
+        ( _, LinkClicked urlRequest ) ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.key (Url.toString url) )
+
+                Browser.External href ->
+                    ( model, Nav.load href )
 
 
 view : Model -> Html Msg
@@ -115,12 +139,12 @@ view model =
         ]
 
 
-main : Program () Model Msg
+main : Program Flags Model Msg
 main =
     application
         { init = init
-        , onUrlChange = SetUrl
-        , onUrlRequest = Whatever
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
         , subscriptions = subscriptions
         , update = update
         , view = \model -> { body = [ view model ], title = "Pizza Party" }

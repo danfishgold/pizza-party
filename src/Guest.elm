@@ -9,12 +9,14 @@ module Guest exposing
     , view
     )
 
+import Browser.Navigation as Nav
 import Count
 import Html exposing (Html, button, div, form, input, span, text)
 import Html.Attributes exposing (disabled, style, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode
 import RoomId exposing (RoomId)
+import Route
 import Socket
 import Stage exposing (Stage(..))
 import Topping exposing (BaseTopping, Topping)
@@ -74,19 +76,6 @@ initWithRoomId roomId =
     )
 
 
-fake : Model
-fake =
-    { initialModel
-        | state =
-            RoomJoining <|
-                Success
-                    { roomId = RoomId.fromString "1"
-                    , user = { name = "fake" }
-                    , baseToppings = Topping.all
-                    }
-    }
-
-
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.state of
@@ -138,20 +127,23 @@ initialPartial roomId =
     { roomId = roomId, user = { name = "" } }
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Nav.Key -> Msg -> Model -> ( Model, Cmd Msg )
+update key msg model =
     case ( msg, model.state ) of
         ( SetState state, _ ) ->
             let
-                newState =
+                ( newState, cmd ) =
                     case state of
                         RoomFinding (Success roomId) ->
-                            RoomJoining <| Editing <| initialPartial roomId
+                            ( RoomJoining <| Editing <| initialPartial roomId
+                            , Cmd.none
+                              --Route.push key (Route.Room roomId)
+                            )
 
                         state_ ->
-                            state_
+                            ( state_, Cmd.none )
             in
-            ( { model | state = newState }, Cmd.none )
+            ( { model | state = newState }, cmd )
 
         ( Noop, _ ) ->
             ( model, Cmd.none )
@@ -198,7 +190,7 @@ update msg model =
                         |> RoomFinding
                         |> SetState
             in
-            update msg_ model
+            update key msg_ model
 
         ( KickedOut kickedOutUser, RoomJoining stage ) ->
             let
@@ -218,7 +210,7 @@ update msg model =
                             |> RoomFinding
                             |> SetState
                 in
-                update msg_ model
+                update key msg_ model
 
             else
                 ( model, Cmd.none )
