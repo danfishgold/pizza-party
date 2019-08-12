@@ -13,16 +13,14 @@ import Config exposing (Config)
 import Count
 import Diagram
 import Dict exposing (Dict)
-import Guest exposing (userView)
-import Html exposing (Html, a, button, div, h1, h2, p, text)
-import Html.Attributes exposing (href)
-import Html.Events exposing (onClick)
+import Element exposing (Element, column, el, link, paragraph, text, wrappedRow)
+import Element.Input exposing (button)
 import RoomId exposing (RoomId)
-import Route
 import Socket
 import Stage exposing (Stage(..))
 import Topping exposing (BaseTopping, Topping)
 import User exposing (User)
+import ViewStuff exposing (guestUserView)
 
 
 type alias Model =
@@ -107,7 +105,7 @@ subscriptions model =
 
 
 update : Nav.Key -> Msg -> Model -> ( Model, Cmd Msg )
-update key msg model =
+update _ msg model =
     case msg of
         StartRoom ->
             case model.room of
@@ -201,34 +199,32 @@ removeGuest user model =
 -- VIEW
 
 
-view : Model -> Html Msg
+view : Model -> Element Msg
 view model =
     case model.room of
         Editing _ ->
-            div []
-                [ button [ onClick StartRoom ] [ text "Start" ]
-                ]
+            button [] { onPress = Just StartRoom, label = text "Start" }
 
         Waiting _ ->
             text "Setting up..."
 
         Success roomId ->
-            div []
-                [ text "room id: "
-                , text <| RoomId.toString roomId
+            column []
+                [ text <| "Room id: " ++ RoomId.toString roomId
                 , model.userCounts
                     |> Dict.values
                     |> (::) model.hostCount
                     |> Topping.concatCounts
                     |> Diagram.pies 100 model.config.slices
-                    |> div []
-                , Guest.userView AddHostSliceCount model.hostCount model.config.toppings.base
+                    |> List.map Element.html
+                    |> wrappedRow []
+                , guestUserView AddHostSliceCount model.hostCount model.config.toppings.base
                 , if List.isEmpty model.users then
-                    div []
-                        [ p [] [ text "But nobody came." ]
-                        , p []
+                    column []
+                        [ text "But nobody came."
+                        , paragraph []
                             [ text "(Tell guests to enter their order on "
-                            , a [ href "https://pizzaparty.glitch.me" ] [ text "pizzaparty.glitch.me" ]
+                            , link [] { url = "https://pizzaparty.glitch.me", label = text "pizzaparty.glitch.me" }
                             , text ")"
                             ]
                         ]
@@ -241,14 +237,13 @@ view model =
             text ("Error: " ++ error)
 
 
-guestsView : List User -> List BaseTopping -> Dict String Topping.Count -> Html Msg
+guestsView : List User -> List BaseTopping -> Dict String Topping.Count -> Element Msg
 guestsView users baseToppings userCounts =
-    div []
-        [ h1 [] [ text "Guests" ]
+    column []
+        [ el [] (text "Guests")
         , users
             |> List.map (userView KickOut AddSliceCount baseToppings userCounts)
-            |> div
-                []
+            |> column []
         ]
 
 
@@ -258,7 +253,7 @@ userView :
     -> List BaseTopping
     -> Dict String Topping.Count
     -> User
-    -> Html msg
+    -> Element msg
 userView kickOut modify baseToppings userCounts user =
     let
         userCount =
@@ -266,8 +261,8 @@ userView kickOut modify baseToppings userCounts user =
                 |> Dict.get user.name
                 |> Maybe.withDefault Topping.emptyCount
     in
-    div []
-        [ h2 [] [ text user.name ]
-        , button [ onClick <| kickOut user ] [ text "kick out" ]
-        , Guest.userView (modify user) userCount baseToppings
+    column []
+        [ el [] (text user.name)
+        , button [] { onPress = Just (kickOut user), label = text "kick out" }
+        , guestUserView (modify user) userCount baseToppings
         ]

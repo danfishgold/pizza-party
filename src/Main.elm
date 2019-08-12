@@ -2,10 +2,10 @@ module Main exposing (main)
 
 import Browser exposing (application)
 import Browser.Navigation as Nav
+import Element exposing (Element, column, row, text)
+import Element.Input exposing (button)
 import Guest
 import Host
-import Html exposing (Html, button, div, text)
-import Html.Events exposing (onClick)
 import Route exposing (Route)
 import Url exposing (Url)
 
@@ -120,23 +120,30 @@ update msg model =
                     ( model, Nav.load href )
 
 
-view : Model -> Html Msg
-view model =
-    div []
+body : Model -> Element Msg
+body model =
+    column []
         [ case model.role of
             Undetermined ->
-                div []
+                row []
                     [ text "Are you the host or a guest?"
-                    , button [ onClick <| SetRole <| Host <| Host.initialModel ] [ text "Host" ]
-                    , button [ onClick <| SetRole <| Guest <| Guest.initialModel ] [ text "Guest" ]
+                    , button [] { onPress = Just <| SetRole <| Host <| Host.initialModel, label = text "Host" }
+                    , button [] { onPress = Just <| SetRole <| Guest <| Guest.initialModel, label = text "Guest" }
                     ]
 
             Host host ->
-                Host.view host |> Html.map HostMsg
+                Host.view host |> Element.map HostMsg
 
             Guest guest ->
-                Guest.view guest |> Html.map GuestMsg
+                Guest.view guest |> Element.map GuestMsg
         ]
+
+
+view : Model -> Browser.Document Msg
+view model =
+    { body = [ Element.layout [] (body model) ]
+    , title = "Pizza Party"
+    }
 
 
 main : Program Flags Model Msg
@@ -147,5 +154,5 @@ main =
         , onUrlRequest = LinkClicked
         , subscriptions = subscriptions
         , update = update
-        , view = \model -> { body = [ view model ], title = "Pizza Party" }
+        , view = view
         }

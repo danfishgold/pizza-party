@@ -5,22 +5,19 @@ module Guest exposing
     , initialModel
     , subscriptions
     , update
-    , userView
     , view
     )
 
 import Browser.Navigation as Nav
 import Count
-import Html exposing (Html, button, div, form, input, span, text)
-import Html.Attributes exposing (disabled, style, value)
-import Html.Events exposing (onClick, onInput)
-import Json.Decode
+import Element exposing (Element, column, text)
+import Element.Input as Input exposing (button)
 import RoomId exposing (RoomId)
-import Route
 import Socket
 import Stage exposing (Stage(..))
 import Topping exposing (BaseTopping, Topping)
 import User exposing (User)
+import ViewStuff exposing (guestUserView, onEnter)
 
 
 type State
@@ -223,12 +220,7 @@ update key msg model =
 -- VIEW
 
 
-onSubmit : msg -> Html.Attribute msg
-onSubmit msg =
-    Html.Events.preventDefaultOn "submit" (Json.Decode.succeed ( msg, True ))
-
-
-view : Model -> Html Msg
+view : Model -> Element Msg
 view model =
     case model.state of
         RoomFinding stage ->
@@ -238,7 +230,7 @@ view model =
             joiningView stage model.counts
 
 
-findingView : Stage RoomId RoomId -> Html Msg
+findingView : Stage RoomId RoomId -> Element Msg
 findingView stage =
     case Stage.data stage of
         Stage.In _ ->
@@ -253,7 +245,7 @@ findingView stage =
             Debug.todo "Forbidden state"
 
 
-joiningView : Stage PartialGroup Group -> Topping.Count -> Html Msg
+joiningView : Stage PartialGroup Group -> Topping.Count -> Element Msg
 joiningView stage counts =
     case Stage.data stage of
         Stage.In _ ->
@@ -265,91 +257,35 @@ joiningView stage counts =
                 JoinRoom
 
         Stage.Out { baseToppings } ->
-            userView AddSliceCount counts baseToppings
+            guestUserView AddSliceCount counts baseToppings
 
 
-stageForm : String -> String -> (input -> String) -> Stage input output -> (String -> msg) -> msg -> Html msg
+stageForm : String -> String -> (input -> String) -> Stage input output -> (String -> msg) -> msg -> Element msg
 stageForm prompt buttonText inputToString stage onInput_ onSubmit_ =
     case Stage.data stage of
         Stage.In inputValue ->
-            form
-                [ onSubmit onSubmit_ ]
-                [ text prompt
-                , input
-                    [ onInput onInput_
-                    , value <| inputToString inputValue
-                    , disabled <| not (Stage.canEdit stage)
-                    ]
-                    []
-                , button
-                    [ disabled <| String.isEmpty (inputToString inputValue) || not (Stage.canSubmit stage) ]
-                    [ text <|
+            column []
+                [ Input.text [ onEnter onSubmit_ ]
+                    -- disabled <| not (Stage.canEdit stage)
+                    { onChange = onInput_
+                    , text = inputToString inputValue
+                    , placeholder = Nothing
+                    , label = Input.labelAbove [] (text prompt)
+                    }
+                , button []
+                    -- disabled <| String.isEmpty (inputToString inputValue) || not (Stage.canSubmit stage)
+                    { onPress = Just onSubmit_
+                    , label =
                         if Stage.waiting stage then
-                            "Fetching..."
+                            text "Fetching..."
 
                         else
-                            buttonText
-                    ]
+                            text buttonText
+                    }
                 , Stage.error stage
                     |> Maybe.map text
-                    |> Maybe.withDefault (text "")
+                    |> Maybe.withDefault Element.none
                 ]
 
         Stage.Out _ ->
             Debug.todo "Tried to show form on Success state"
-
-
-userView : (Topping -> Int -> msg) -> Topping.Count -> List BaseTopping -> Html msg
-userView modify count baseToppings =
-    let
-        counter topping =
-            toppingCounter
-                (modify topping -1)
-                (modify topping 1)
-                (Count.get topping count)
-                topping
-    in
-    count
-        |> Topping.filterZeros
-        |> Topping.toSortedList baseToppings
-        |> List.map counter
-        |> div []
-
-
-toppingCounter : msg -> msg -> Int -> Topping -> Html msg
-toppingCounter decrease increase value topping =
-    let
-        color =
-            case value of
-                0 ->
-                    "#eee"
-
-                1 ->
-                    "yellow"
-
-                2 ->
-                    "orange"
-
-                _ ->
-                    "darkorange"
-    in
-    div
-        [ style "display" "inline-block"
-        , style "background-color" color
-        , style "padding" "5px"
-        , style "margin" "10px"
-        ]
-        [ span [ style "font-weight" "bold" ] [ text <| Topping.toString topping ]
-        , div []
-            [ button
-                [ if value == 0 then
-                    disabled True
-
-                  else
-                    onClick <| decrease
-                ]
-                [ text "-" ]
-            , text <| String.fromInt value
-            , button [ onClick <| increase ] [ text "+" ]
-            ]
-        ]
