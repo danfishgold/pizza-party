@@ -9,22 +9,18 @@ const db = low(new FileSync('.data/db.json'))
 
 db.set('sessions', []).write()
 
-app.use(express.static('client'))
+function staticRoute(app, route, path) {
+  app.get(route, function(_, response) {
+    response.sendFile(__dirname + path)
+  })
+}
 
-app.get('/', function(request, response) {
-  console.log('url: ', request.url)
-  response.sendFile(__dirname + '/client/index.html')
-})
-
-app.get('/fake/room/:roomId', function(request, response) {
-  console.log('url: ', request.url)
-  response.sendFile(__dirname + '/client/index.html')
-})
-
-app.get('/room/:roomId', function(request, response) {
-  console.log('url: ', request.url)
-  response.sendFile(__dirname + '/client/index.html')
-})
+staticRoute(app, '/', '/index.html')
+staticRoute(app, '/fake/room/:roomId', '/index.html')
+staticRoute(app, '/room/:roomId', '/index.html')
+staticRoute(app, '/client.js', '/client.js')
+staticRoute(app, '/elm.js', '/elm.js')
+staticRoute(app, '/style.css', '/style.css')
 
 const port = process.env.PORT || 5000
 server.listen(port, () => {
