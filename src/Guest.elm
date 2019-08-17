@@ -10,14 +10,14 @@ module Guest exposing
 
 import Browser.Navigation as Nav
 import Count
-import Element exposing (Element, column, text)
+import Element exposing (..)
 import Element.Input as Input exposing (button)
 import RoomId exposing (RoomId)
 import Socket
 import Stage exposing (Stage(..))
 import Topping exposing (BaseTopping, Topping)
 import User exposing (User)
-import ViewStuff exposing (guestUserView, onEnter)
+import ViewStuff exposing (..)
 
 
 type State
@@ -234,12 +234,14 @@ findingView : Stage RoomId RoomId -> Element Msg
 findingView stage =
     case Stage.data stage of
         Stage.In _ ->
-            stageForm "Enter the room number"
-                "Find Room"
+            stageForm "join a party"
+                "enter the party's id"
+                "find party"
                 RoomId.toString
                 stage
                 (RoomId.fromString >> EditRoomId)
                 FindRoom
+                |> configPanel
 
         Stage.Out _ ->
             Debug.todo "Forbidden state"
@@ -249,39 +251,44 @@ joiningView : Stage PartialGroup Group -> Topping.Count -> Element Msg
 joiningView stage counts =
     case Stage.data stage of
         Stage.In _ ->
-            stageForm "Enter your username"
-                "Join"
+            stageForm "join a party"
+                "choose a username"
+                "join party"
                 (.user >> .name)
                 stage
                 EditName
                 JoinRoom
+                |> configPanel
 
         Stage.Out { baseToppings } ->
             guestUserView AddSliceCount counts baseToppings
 
 
-stageForm : String -> String -> (input -> String) -> Stage input output -> (String -> msg) -> msg -> Element msg
-stageForm prompt buttonText inputToString stage onInput_ onSubmit_ =
+stageForm : String -> String -> String -> (input -> String) -> Stage input output -> (String -> msg) -> msg -> Element msg
+stageForm titleText prompt buttonText inputToString stage onInput onSubmit =
     case Stage.data stage of
         Stage.In inputValue ->
-            column []
-                [ Input.text [ onEnter onSubmit_ ]
-                    -- disabled <| not (Stage.canEdit stage)
-                    { onChange = onInput_
-                    , text = inputToString inputValue
-                    , placeholder = Nothing
-                    , label = Input.labelAbove [] (text prompt)
-                    }
-                , button []
-                    -- disabled <| String.isEmpty (inputToString inputValue) || not (Stage.canSubmit stage)
-                    { onPress = Just onSubmit_
-                    , label =
-                        if Stage.waiting stage then
-                            text "Fetching..."
+            let
+                buttonTitle =
+                    if Stage.waiting stage then
+                        "Fetching..."
 
-                        else
-                            text buttonText
-                    }
+                    else
+                        buttonText
+            in
+            column [ spacing 50 ]
+                [ title titleText
+                , if Stage.canEdit stage then
+                    Input.text [ onEnter onSubmit ]
+                        { onChange = onInput
+                        , text = inputToString inputValue
+                        , placeholder = Nothing
+                        , label = Input.labelAbove [] (text prompt)
+                        }
+
+                  else
+                    text <| inputToString inputValue
+                , pillButton onSubmit buttonTitle
                 , Stage.error stage
                     |> Maybe.map text
                     |> Maybe.withDefault Element.none

@@ -13,14 +13,16 @@ import Config exposing (Config)
 import Count
 import Diagram
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, link, paragraph, text, wrappedRow)
+import Element exposing (..)
+import Element.Background as Background
+import Element.Font as Font
 import Element.Input exposing (button)
 import RoomId exposing (RoomId)
 import Socket
 import Stage exposing (Stage(..))
 import Topping exposing (BaseTopping, Topping)
 import User exposing (User)
-import ViewStuff exposing (guestUserView)
+import ViewStuff exposing (..)
 
 
 type alias Model =
@@ -203,47 +205,62 @@ view : Model -> Element Msg
 view model =
     case model.room of
         Editing _ ->
-            button [] { onPress = Just StartRoom, label = text "Start" }
+            column []
+                [ paragraph []
+                    [ text "New Party" ]
+                , pillButton StartRoom "Start"
+                ]
+                |> configPanel
 
         Waiting _ ->
-            text "Setting up..."
+            text "Setting up..." |> configPanel
 
         Success roomId ->
-            column []
-                [ text <| "Room id: " ++ RoomId.toString roomId
-                , model.userCounts
-                    |> Dict.values
-                    |> (::) model.hostCount
-                    |> Topping.concatCounts
-                    |> Diagram.pies 100 model.config.slices
-                    |> List.map Element.html
-                    |> wrappedRow []
-                , guestUserView AddHostSliceCount model.hostCount model.config.toppings.base
-                , if List.isEmpty model.users then
-                    column []
-                        [ text "But nobody came."
-                        , paragraph []
-                            [ text "(Tell guests to enter their order on "
-                            , link [] { url = "https://pizzaparty.glitch.me", label = text "pizzaparty.glitch.me" }
-                            , text ")"
+            column [ width fill ]
+                [ row
+                    [ width fill
+                    , Background.color (rgb 1 0.7 0.5)
+                    , padding 30
+                    ]
+                    [ title "pizza party"
+                    , text <| "party id: " ++ RoomId.toString roomId
+                    ]
+                , column [ padding 50, spacing 30 ]
+                    [ model.userCounts
+                        |> Dict.values
+                        |> (::) model.hostCount
+                        |> Topping.concatCounts
+                        |> Diagram.pies 100 model.config.slices
+                        |> List.map Element.html
+                        |> wrappedRow []
+                    , guestUserView AddHostSliceCount model.hostCount model.config.toppings.base
+                        |> el []
+                    , if List.isEmpty model.users then
+                        column []
+                            [ text "But nobody came."
+                            , paragraph []
+                                [ text "(Tell guests to enter their order on "
+                                , link [] { url = "https://pizzaparty.glitch.me", label = text "pizzaparty.glitch.me" }
+                                , text ")"
+                                ]
                             ]
-                        ]
 
-                  else
-                    guestsView model.users model.config.toppings.base model.userCounts
+                      else
+                        guestsView model.users model.config.toppings.base model.userCounts
+                    ]
                 ]
 
         Failure _ error ->
-            text ("Error: " ++ error)
+            text ("Error: " ++ error) |> configPanel
 
 
 guestsView : List User -> List BaseTopping -> Dict String Topping.Count -> Element Msg
 guestsView users baseToppings userCounts =
-    column []
-        [ el [] (text "Guests")
+    column [ spacing 15 ]
+        [ el [ Font.size 24, Font.bold ] (text "Guests")
         , users
             |> List.map (userView KickOut AddSliceCount baseToppings userCounts)
-            |> column []
+            |> column [ spacing 20 ]
         ]
 
 
@@ -261,8 +278,10 @@ userView kickOut modify baseToppings userCounts user =
                 |> Dict.get user.name
                 |> Maybe.withDefault Topping.emptyCount
     in
-    column []
-        [ el [] (text user.name)
-        , button [] { onPress = Just (kickOut user), label = text "kick out" }
+    column [ spacing 10 ]
+        [ row [ spacing 20 ]
+            [ el [] (text user.name)
+            , redLink (kickOut user) "kick out"
+            ]
         , guestUserView (modify user) userCount baseToppings
         ]

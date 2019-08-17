@@ -2,12 +2,13 @@ module Main exposing (main)
 
 import Browser exposing (application)
 import Browser.Navigation as Nav
-import Element exposing (Element, column, row, text)
-import Element.Input exposing (button)
+import Element exposing (..)
+import Element.Font as Font
 import Guest
 import Host
 import Route exposing (Route)
 import Url exposing (Url)
+import ViewStuff exposing (configPanel, pillButton, title)
 
 
 type Role
@@ -122,21 +123,28 @@ update msg model =
 
 body : Model -> Element Msg
 body model =
-    column []
-        [ case model.role of
-            Undetermined ->
-                row []
-                    [ text "Are you the host or a guest?"
-                    , button [] { onPress = Just <| SetRole <| Host <| Host.initialModel, label = text "Host" }
-                    , button [] { onPress = Just <| SetRole <| Guest <| Guest.initialModel, label = text "Guest" }
+    case model.role of
+        Undetermined ->
+            [ el [ centerX ] (title "pizza party")
+            , column [ width shrink, centerX, spacing 20 ]
+                [ el [ width fill ] <| pillButton (SetRole <| Host <| Host.initialModel) "create a new party"
+                , el [ width fill ] <| pillButton (SetRole <| Guest <| Guest.initialModel) "join an existing party"
+                ]
+            , paragraph [ Font.size 14, width (shrink |> maximum 500) ]
+                [ text "if you're not sure what to do, click the first button. "
+                , text "if you're not sure what to do but someone told you to go to this website and enter a couple of digits, click the second one."
+                ]
+            ]
+                |> column
+                    [ spacing 50
                     ]
+                |> configPanel
 
-            Host host ->
-                Host.view host |> Element.map HostMsg
+        Host host ->
+            Host.view host |> Element.map HostMsg
 
-            Guest guest ->
-                Guest.view guest |> Element.map GuestMsg
-        ]
+        Guest guest ->
+            Guest.view guest |> Element.map GuestMsg
 
 
 view : Model -> Browser.Document Msg
