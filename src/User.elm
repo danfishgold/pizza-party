@@ -11,13 +11,13 @@ type alias User =
 
 decoder : Decoder User
 decoder =
-    Decode.string
-        |> Decode.map User
+    Decode.map User
+        (Decode.field "name" Decode.string)
 
 
 encode : User -> Encode.Value
 encode { name } =
-    Encode.string name
+    Encode.object [ ( "name", Encode.string name ) ]
 
 
 type alias Key =

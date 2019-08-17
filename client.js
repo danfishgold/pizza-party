@@ -4,24 +4,16 @@ const socket = io.connect('/')
 
 // OUTGOING
 
-app.ports.createRoom.subscribe(data => {
+app.ports.sendCreateRoom.subscribe(data => {
   socket.emit('create-room', data)
 })
 
-app.ports.joinRoom.subscribe(data => {
+app.ports.sendJoinRoom.subscribe(data => {
   socket.emit('join-room', data)
 })
 
-app.ports.sendTriplet.subscribe(data => {
-  socket.emit('triplet', data)
-})
-
-app.ports.requestBaseToppingList.subscribe(data => {
-  socket.emit('request-base-topping-list', data)
-})
-
-app.ports.sendBaseToppingListOrError.subscribe(data => {
-  socket.emit('base-topping-list', data)
+app.ports.sendUpdateTriplet.subscribe(data => {
+  socket.emit('triplet-update', data)
 })
 
 app.ports.sendKickGuest.subscribe(data => {
@@ -31,33 +23,36 @@ app.ports.sendKickGuest.subscribe(data => {
 // INCOMING
 
 socket.on('create-room-response', data => {
-  app.ports.createRoomResponse.send(data)
+  console.log('create-room-response')
+  app.ports.receiveCreateRoomResponse.send(data)
 })
 
 socket.on('join-room-response', data => {
-  app.ports.joinRoomResponse.send(data)
+  console.log('join-room-response')
+  app.ports.receiveJoinRoomResponse.send(data)
 })
 
-socket.on('triplet', data => {
-  app.ports.receiveTriplet.send(data)
+socket.on('triplet-update', data => {
+  console.log('triplet-update')
+  app.ports.receiveUpdateTriplet.send(data)
 })
 
-socket.on('request-base-topping-list', data => {
-  app.ports.receiveBaseToppingListRequest.send(data)
-})
-
-socket.on('base-topping-list', data => {
-  app.ports.receiveBaseToppingList.send(data)
+socket.on('guest-joined', data => {
+  console.log('guest-joined')
+  app.ports.receiveGuestJoined.send(data)
 })
 
 socket.on('guest-left', data => {
+  console.log('guest-left')
   app.ports.receiveGuestLeft.send(data)
 })
 
 socket.on('host-left', data => {
+  console.log('host-left')
   app.ports.receiveHostLeft.send(data)
 })
 
 socket.on('kick-guest', data => {
+  console.log('kick-guest')
   app.ports.receiveKickGuest.send(data)
 })

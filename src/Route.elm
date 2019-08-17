@@ -1,4 +1,4 @@
-module Route exposing (Route(..), parse, push, toString)
+module Route exposing (Route(..), parse, push, reload, replace, roomUrl, toString)
 
 import Browser.Navigation as Nav
 import RoomId exposing (RoomId)
@@ -9,8 +9,12 @@ import Url.Parser as Parser exposing ((</>), Parser)
 
 type Route
     = Home
-    | Room RoomId
+    | Create
+    | Join RoomId
+    | Guest RoomId
+    | Host RoomId
     | Fake RoomId
+    | NotFound
 
 
 toString : Route -> String
@@ -19,16 +23,38 @@ toString route =
         Home ->
             Builder.absolute [] []
 
-        Room roomId ->
+        Create ->
+            Builder.absolute [ "room", "new" ] []
+
+        Join roomId ->
+            Builder.absolute [ "room", RoomId.toString roomId, "join" ] []
+
+        Guest roomId ->
             Builder.absolute [ "room", RoomId.toString roomId ] []
+
+        Host roomId ->
+            Builder.absolute [ "room", RoomId.toString roomId, "host" ] []
 
         Fake roomId ->
             Builder.absolute [ "fake", "room", RoomId.toString roomId ] []
+
+        NotFound ->
+            toString Home
+
+
+roomUrl : RoomId -> String
+roomUrl roomId =
+    "pizzaparty.glitch.me" ++ toString (Guest roomId)
 
 
 push : Nav.Key -> Route -> Cmd msg
 push key route =
     Nav.pushUrl key (toString route)
+
+
+replace : Nav.Key -> Route -> Cmd msg
+replace key route =
+    Nav.replaceUrl key (toString route)
 
 
 parse : Url -> Maybe Route
@@ -40,13 +66,26 @@ parser : Parser (Route -> a) a
 parser =
     Parser.oneOf
         [ Parser.top |> Parser.map Home
-        , Parser.s "fake" </> Parser.s "room" </> roomIdParser |> Parser.map Fake
-        , Parser.s "room" </> roomIdParser |> Parser.map Room
+        , Parser.s "room" </> Parser.s "new" |> Parser.map Create
+        , Parser.s "room" </> roomIdParser </> Parser.s "join" |> mapOrNotFound Join
+        , Parser.s "room" </> roomIdParser |> mapOrNotFound Guest
+        , Parser.s "room" </> roomIdParser </> Parser.s "host" |> mapOrNotFound Host
+        , Parser.s "fake" </> Parser.s "room" </> roomIdParser |> mapOrNotFound Fake
         ]
 
 
-roomIdParser : Parser (RoomId -> a) a
+roomIdParser : Parser (Maybe RoomId -> a) a
 roomIdParser =
-    Parser.int
-        |> Parser.map String.fromInt
+    Parser.string
         |> Parser.map RoomId.fromString
+        |> Parser.map Result.toMaybe
+
+
+mapOrNotFound : (RoomId -> Route) -> Parser (Maybe RoomId -> Route) a -> Parser (a -> b) b
+mapOrNotFound toRoute =
+    Parser.map (Maybe.map toRoute >> Maybe.withDefault NotFound)
+
+
+reload : Cmd msg
+reload =
+    Nav.reload

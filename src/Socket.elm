@@ -1,194 +1,137 @@
 port module Socket exposing
-    ( baseToppingListFromHost
-    , baseToppingListRequestFromGuest
-    , broadcastSliceTriplet
-    , createRoomAsHost
-    , createRoomResponseFromServer
-    , findRoomAsGuest
-    , guestDisconnectionsFromServer
-    , hostDisconnectionsFromServer
-    , kickGuestAsHost
-    , kickedOutByHost
-    , requestToppingsListFromHost
-    , roomFoundResponseFromServer
-    , sendBaseToppingListOrErrorToGuest
-    , sliceTripletsFromGuest
+    ( createRoom
+    , joinRoom
+    , kickOut
+    , onGuestJoined
+    , onGuestLeft
+    , onHostLeft
+    , onKickOut
+    , onRoomCreated
+    , onRoomJoined
+    , onTripletUpdate
+    , updateTriplet
     )
 
-import Json.Decode as Decode exposing (Decoder)
+import Config exposing (Config)
+import Json.Decode as Decode
 import Json.Encode as Encode exposing (Value)
 import RoomId exposing (RoomId)
-import Topping exposing (BaseTopping, Topping)
+import ToppingTriplet as Triplet exposing (Triplet)
 import User exposing (User)
 
 
+{-| Nice decoder for server stuff
 
--- DECODERS AND ENCODERS
+decodeResult Decode.int { error: "string error message" } => Err "string error message"
+decodeResult Decode.int { "ok": 3 } => Ok 3
+decodeResult Decode.int { "ok": "3" } => Err "Json decode error: whatever"
 
-
-decodeTriplet : Decoder ( User, Topping, Int )
-decodeTriplet =
-    Decode.map3 (\a b c -> ( a, b, c ))
-        (Decode.field "user" User.decoder)
-        (Decode.field "topping" Topping.decoder)
-        (Decode.field "count" Decode.int)
-
-
-encodeTriplet : ( User, Topping, Int ) -> Encode.Value
-encodeTriplet ( user, topping, count ) =
-    Encode.object
-        [ ( "user", User.encode user )
-        , ( "topping", Topping.encode topping )
-        , ( "count", Encode.int count )
-        ]
-
-
-decodeResult : Decode.Decoder (Result String a) -> Value -> Result String a
-decodeResult decoder value =
-    case Decode.decodeValue decoder value of
-        Err error ->
-            Err <| Decode.errorToString error
+-}
+decodeResult : Decode.Decoder a -> Value -> Result String a
+decodeResult successDecoder value =
+    case
+        Decode.decodeValue
+            (Decode.oneOf
+                [ Decode.field "ok" successDecoder |> Decode.map Ok
+                , Decode.field "error" Decode.string |> Decode.map Err
+                ]
+            )
+            value
+    of
+        Err decodeError ->
+            Err <| Decode.errorToString decodeError
 
         Ok result ->
             result
 
 
-
--- CONNECTIONS
-
-
-port createRoom : () -> Cmd msg
-
-
-port createRoomResponse : (Value -> msg) -> Sub msg
-
-
-port joinRoom : Value -> Cmd msg
-
-
-port joinRoomResponse : (Value -> msg) -> Sub msg
-
-
-createRoomAsHost : Cmd msg
-createRoomAsHost =
-    createRoom ()
-
-
-createRoomResponseFromServer : (Result String RoomId -> msg) -> Sub msg
-createRoomResponseFromServer toMsg =
-    createRoomResponse
-        (decodeResult
-            (Decode.oneOf
-                [ Decode.field "ok" (Decode.field "roomId" RoomId.decoder) |> Decode.map Ok
-                , Decode.field "error" Decode.string |> Decode.map Err
-                ]
-            )
-            >> toMsg
-        )
-
-
-findRoomAsGuest : RoomId -> Cmd msg
-findRoomAsGuest roomId =
-    joinRoom (RoomId.encode roomId)
-
-
-roomFoundResponseFromServer : (Result String RoomId -> msg) -> Sub msg
-roomFoundResponseFromServer toMsg =
-    joinRoomResponse
-        (decodeResult
-            (Decode.oneOf
-                [ Decode.field "ok" RoomId.decoder |> Decode.map Ok
-                , Decode.field "error" Decode.string |> Decode.map Err
-                ]
-            )
-            >> toMsg
-        )
-
-
-
--- TRIPLET UPDATES
-
-
-port sendTriplet : Value -> Cmd msg
-
-
-port receiveTriplet : (Value -> msg) -> Sub msg
-
-
-broadcastSliceTriplet : User -> Topping -> Int -> Cmd msg
-broadcastSliceTriplet user topping value =
-    encodeTriplet ( user, topping, value )
-        |> sendTriplet
-
-
-sliceTripletsFromGuest : (Maybe ( User, Topping, Int ) -> msg) -> Sub msg
-sliceTripletsFromGuest toMsg =
-    receiveTriplet
-        (Decode.decodeValue decodeTriplet
-            >> Result.mapError (Debug.log "error on topping triplet")
-            >> Result.toMaybe
-            >> toMsg
-        )
-
-
-
--- NEW GUESTS
-
-
-port requestBaseToppingList : Value -> Cmd msg
-
-
-port receiveBaseToppingListRequest : (Value -> msg) -> Sub msg
-
-
-port sendBaseToppingListOrError : Value -> Cmd msg
-
-
-port receiveBaseToppingList : (Value -> msg) -> Sub msg
-
-
-requestToppingsListFromHost : User -> Cmd msg
-requestToppingsListFromHost user =
-    requestBaseToppingList (User.encode user)
-
-
-baseToppingListRequestFromGuest : (Result Decode.Error User -> msg) -> Sub msg
-baseToppingListRequestFromGuest toMsg =
-    receiveBaseToppingListRequest
-        (Decode.decodeValue User.decoder >> toMsg)
-
-
-sendBaseToppingListOrErrorToGuest : Result String (List BaseTopping) -> Cmd msg
-sendBaseToppingListOrErrorToGuest result =
+encodeResult : (a -> Value) -> Result String a -> Value
+encodeResult encodeSuccess result =
     case result of
-        Ok toppings ->
-            toppings
-                |> Encode.list Topping.encodeBaseTopping
-                |> (\toppingList ->
-                        Encode.object [ ( "toppings", toppingList ) ]
-                            |> sendBaseToppingListOrError
-                   )
+        Ok success ->
+            Encode.object [ ( "ok", encodeSuccess success ) ]
 
-        Err error ->
-            Encode.object [ ( "error", Encode.string error ) ]
-                |> sendBaseToppingListOrError
+        Err err ->
+            Encode.object [ ( "error", Encode.string err ) ]
 
 
-baseToppingListFromHost : (Result String (List BaseTopping) -> msg) -> Sub msg
-baseToppingListFromHost toMsg =
-    receiveBaseToppingList
-        (decodeResult
-            (Decode.oneOf
-                [ Decode.field "toppings" (Decode.list Topping.baseToppingDecoder) |> Decode.map Ok
-                , Decode.field "error" Decode.string |> Decode.map Err
-                ]
-            )
+
+-- CREATE
+
+
+port sendCreateRoom : Value -> Cmd msg
+
+
+port receiveCreateRoomResponse : (Value -> msg) -> Sub msg
+
+
+createRoom : Config -> Cmd msg
+createRoom config =
+    sendCreateRoom (Encode.object [ ( "config", Config.encode config ) ])
+
+
+onRoomCreated : (Result String RoomId -> msg) -> Sub msg
+onRoomCreated toMsg =
+    receiveCreateRoomResponse
+        (decodeResult (Decode.field "roomId" RoomId.decoder)
             >> toMsg
         )
 
 
 
--- DISCONNECTIONS
+-- JOIN
+
+
+port sendJoinRoom : Value -> Cmd msg
+
+
+port receiveJoinRoomResponse : (Value -> msg) -> Sub msg
+
+
+joinRoom : RoomId -> User -> Cmd msg
+joinRoom roomId user =
+    sendJoinRoom
+        (Encode.object
+            [ ( "roomId", RoomId.encode roomId )
+            , ( "user", User.encode user )
+            ]
+        )
+
+
+onRoomJoined : (Result String Config -> msg) -> Sub msg
+onRoomJoined toMsg =
+    receiveJoinRoomResponse
+        (decodeResult (Decode.field "config" Config.decoder) >> toMsg)
+
+
+
+-- HOST & GUEST: TRIPLETS
+
+
+port sendUpdateTriplet : Value -> Cmd msg
+
+
+port receiveUpdateTriplet : (Value -> msg) -> Sub msg
+
+
+updateTriplet : Triplet -> Cmd msg
+updateTriplet triplet =
+    sendUpdateTriplet (encodeResult Triplet.encode (Ok triplet))
+
+
+onTripletUpdate : (Result String Triplet -> msg) -> Sub msg
+onTripletUpdate toMsg =
+    receiveUpdateTriplet
+        (decodeResult Triplet.decoder
+            >> toMsg
+        )
+
+
+
+-- HOST & GUEST: CONNECTIONS & DISCONNECTIONS
+
+
+port receiveGuestJoined : (Value -> msg) -> Sub msg
 
 
 port receiveGuestLeft : (Value -> msg) -> Sub msg
@@ -197,23 +140,25 @@ port receiveGuestLeft : (Value -> msg) -> Sub msg
 port receiveHostLeft : (Value -> msg) -> Sub msg
 
 
-guestDisconnectionsFromServer : (Maybe User -> msg) -> Sub msg
-guestDisconnectionsFromServer toMsg =
+onGuestJoined : (Result String User -> msg) -> Sub msg
+onGuestJoined toMsg =
+    receiveGuestJoined
+        (decodeResult (Decode.field "user" User.decoder) >> toMsg)
+
+
+onGuestLeft : (Result String User -> msg) -> Sub msg
+onGuestLeft toMsg =
     receiveGuestLeft
-        (Decode.decodeValue User.decoder
-            >> Result.mapError (Debug.log "error on guest disconnection")
-            >> Result.toMaybe
-            >> toMsg
-        )
+        (decodeResult (Decode.field "user" User.decoder) >> toMsg)
 
 
-hostDisconnectionsFromServer : msg -> Sub msg
-hostDisconnectionsFromServer toMsg =
+onHostLeft : msg -> Sub msg
+onHostLeft toMsg =
     receiveHostLeft (always toMsg)
 
 
 
--- KICKING OUT
+-- HOST & GUEST: KICKING OUT
 
 
 port sendKickGuest : Value -> Cmd msg
@@ -222,16 +167,12 @@ port sendKickGuest : Value -> Cmd msg
 port receiveKickGuest : (Value -> msg) -> Sub msg
 
 
-kickGuestAsHost : User -> Cmd msg
-kickGuestAsHost user =
-    sendKickGuest (User.encode user)
+kickOut : User -> Cmd msg
+kickOut user =
+    sendKickGuest (encodeResult User.encode (Ok user))
 
 
-kickedOutByHost : (Maybe User -> msg) -> Sub msg
-kickedOutByHost toMsg =
+onKickOut : (Result String User -> msg) -> Sub msg
+onKickOut toMsg =
     receiveKickGuest
-        (Decode.decodeValue User.decoder
-            >> Result.mapError (Debug.log "error on kicking out guest")
-            >> Result.toMaybe
-            >> toMsg
-        )
+        (decodeResult (Decode.field "user" User.decoder) >> toMsg)

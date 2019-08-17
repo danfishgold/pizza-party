@@ -8,9 +8,16 @@ type RoomId
     = RoomId String
 
 
-fromString : String -> RoomId
+fromString : String -> Result String RoomId
 fromString str =
-    RoomId str
+    if String.isEmpty str then
+        Err "empty room id"
+
+    else if String.toInt str == Nothing then
+        Err "room id is not a number"
+
+    else
+        Ok (RoomId str)
 
 
 toString : RoomId -> String

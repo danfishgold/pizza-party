@@ -16,8 +16,11 @@ function staticRoute(app, route, path) {
 }
 
 staticRoute(app, '/', '/index.html')
-staticRoute(app, '/fake/room/:roomId', '/index.html')
+staticRoute(app, '/room/new', '/index.html')
+staticRoute(app, '/room/:roomId/join', '/index.html')
 staticRoute(app, '/room/:roomId', '/index.html')
+staticRoute(app, '/room/:roomId/host', '/index.html')
+staticRoute(app, '/fake/room/:roomId', '/index.html')
 staticRoute(app, '/client.js', '/client.js')
 staticRoute(app, '/elm.js', '/elm.js')
 staticRoute(app, '/style.css', '/style.css')
@@ -27,7 +30,7 @@ server.listen(port, () => {
   console.log(`Listening on port ${port}`)
 })
 
-function alreadyHost(socket) {
+function isAlreadyHost(socket) {
   const sessionWithSocketAsHost = db
     .get('sessions')
     .find({ hostId: socket.id })
@@ -45,45 +48,76 @@ function roomIdExists(roomId) {
   return sessionWithRoomId != undefined
 }
 
-function hostOfRoom(roomId) {
-  const hostId = db
+function getRoom(roomId) {
+  return db
     .get('sessions')
     .find({ roomId })
-    .value().hostId
-
-  return hostId
+    .value()
 }
 
-function createRandomRoomWithHost(socket) {
-  const roomId = Math.random()
-    .toString()
-    .substring(2, 8)
+function nameAlreadyExistsInRoom(name, roomId) {
+  const userWithName = db
+    .get('sessions')
+    .find({ roomId })
+    .get('guests')
+    .find({ name })
+    .value()
+  return userWithName != undefined
+}
+
+function createRandomRoomWithHost(socket, config) {
+  let roomId = '82'
+  while (roomIdExists(roomId)) {
+    roomId = Math.random()
+      .toString()
+      .substring(2, 8)
+  }
   db.get('sessions')
-    .push({ roomId, hostId: socket.id })
+    .push({ roomId, config, hostId: socket.id, guests: [] })
     .write()
 
   return roomId
 }
 
-function joinRoomAndAddHandlers(socket, roomId) {
+function removeRoom(roomId) {
+  db.get('sessions')
+    .remove({ roomId: roomId })
+    .write()
+}
+
+function addGuestToRoom(socketId, user, roomId) {
+  db.get('sessions')
+    .find({ roomId })
+    .get('guests')
+    .push({ socketId, ...user })
+    .write()
+}
+function getGuest(socketId, roomId) {
+  return db
+    .get('sessions')
+    .find({ roomId })
+    .get('guests')
+    .find({ socketId })
+    .value()
+}
+function removeGuestFromRoom(socketId, roomId) {
+  db.get('sessions')
+    .find({ roomId })
+    .get('guests')
+    .remove({ socketId })
+    .write()
+}
+
+function addHandlers(socket, roomId) {
   const room = {
     id: roomId,
     name: `room-${roomId}`,
-    hostId: hostOfRoom(roomId),
+    hostId: getRoom(roomId).hostId,
   }
   socket.join(room.name)
 
-  socket.on('request-base-topping-list', data => {
-    room.user = data
-    socket.to(room.hostId).emit('request-base-topping-list', data)
-  })
-
-  socket.on('base-topping-list', data => {
-    socket.to(room.name).emit('base-topping-list', data)
-  })
-
-  socket.on('triplet', data => {
-    socket.to(room.name).emit('triplet', data)
+  socket.on('triplet-update', data => {
+    socket.to(room.name).emit('triplet-update', data)
   })
 
   socket.on('kick-guest', data => {
@@ -91,23 +125,26 @@ function joinRoomAndAddHandlers(socket, roomId) {
   })
 
   socket.on('disconnect', () => {
-    if (room.hostId == socket.id) {
+    if (room.hostId === socket.id) {
       socket.to(room.name).emit('host-left')
-      db.get('sessions')
-        .remove({ roomId: room.id })
-        .write()
+      removeRoom(roomId)
     } else {
-      socket.to(room.hostId).emit('guest-left', room.user)
+      socket
+        .to(room.hostId)
+        .emit('guest-left', { ok: { user: getGuest(socket.id, roomId) } })
+      removeGuestFromRoom(socket.id, roomId)
     }
   })
 }
 
 io.on('connection', socket => {
-  socket.on('create-room', () => {
-    if (!alreadyHost(socket)) {
-      const roomId = createRandomRoomWithHost(socket)
-      joinRoomAndAddHandlers(socket, roomId)
-      socket.emit('create-room-response', { ok: { roomId } })
+  socket.on('create-room', ({ config }) => {
+    if (!isAlreadyHost(socket)) {
+      const roomId = createRandomRoomWithHost(socket, config)
+      addHandlers(socket, roomId)
+      socket.emit('create-room-response', {
+        ok: { roomId },
+      })
     } else {
       socket.emit('create-room-response', {
         error: 'The user is already a host',
@@ -115,13 +152,25 @@ io.on('connection', socket => {
     }
   })
 
-  socket.on('join-room', roomId => {
-    if (roomIdExists(roomId)) {
-      joinRoomAndAddHandlers(socket, roomId)
-      socket.emit('join-room-response', { ok: roomId })
-    } else {
+  socket.on('join-room', ({ roomId, user }) => {
+    if (!roomIdExists(roomId)) {
       socket.emit('join-room-response', {
         error: "There's no room with this id",
+      })
+    } else if (nameAlreadyExistsInRoom(user.name, roomId)) {
+      socket.emit('join-room-response', {
+        error: 'That name is already used',
+      })
+    } else {
+      addHandlers(socket, roomId)
+      addGuestToRoom(socket.id, user, roomId)
+      const room = getRoom(roomId)
+      const config = room.config
+      socket.to(room.hostId).emit('guest-joined', {
+        ok: { user },
+      })
+      socket.emit('join-room-response', {
+        ok: { config },
       })
     }
   })

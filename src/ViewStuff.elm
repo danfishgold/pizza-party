@@ -1,4 +1,4 @@
-module ViewStuff exposing (blueLink, configPanel, guestUserView, onEnter, pillButton, redLink, title)
+module ViewStuff exposing (blueLink, configPanel, errorOverlay, guestUserView, onEnter, pillButton, redLink, title)
 
 import Color
 import Count
@@ -237,5 +237,22 @@ configPanel content =
         , Border.width 2
         , width (shrink |> minimum 500)
         , height (shrink |> minimum 500)
+        , Background.color (rgb 1 1 1)
         ]
         content
+
+
+errorOverlay : String -> msg -> Element msg
+errorOverlay error reload =
+    el
+        [ Background.color (rgba 0.5 0.5 0.5 0.5)
+        , width fill
+        , height fill
+        , inFront
+            (configPanel
+                (column [ width fill, height fill, spaceEvenly ]
+                    [ el [] (text error), el [ centerX ] (pillButton reload "reload") ]
+                )
+            )
+        ]
+        Element.none
