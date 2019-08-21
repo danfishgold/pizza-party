@@ -4,6 +4,7 @@ import Browser.Navigation as Nav
 import Element exposing (..)
 import Element.Font as Font
 import Element.Input as Input
+import Error exposing (Error)
 import RemoteData exposing (RemoteData(..))
 import RoomId
 import Route
@@ -16,7 +17,7 @@ import ViewStuff exposing (configPanel, pillButton, title)
 
 type alias Model =
     { roomIdString : String
-    , error : Maybe String
+    , error : Maybe Error
     }
 
 

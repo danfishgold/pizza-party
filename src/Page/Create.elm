@@ -3,6 +3,7 @@ module Page.Create exposing (Model, Msg, configForHostModel, init, subscriptions
 import Browser.Navigation as Nav
 import Config exposing (Config)
 import Element exposing (..)
+import Error exposing (Error)
 import RemoteData exposing (RemoteData(..))
 import RoomId exposing (RoomId)
 import Route
@@ -15,14 +16,14 @@ import ViewStuff exposing (configPanel, pillButton)
 
 
 type alias Model =
-    { submission : RemoteData String RoomId
+    { submission : RemoteData Error RoomId
     , config : Config
     }
 
 
 type Msg
     = CreateRoom
-    | CreationResult (Result String RoomId)
+    | CreationResult (Result Error RoomId)
 
 
 
@@ -88,7 +89,7 @@ view model =
             text "Setting up..." |> configPanel
 
         Failure err ->
-            text ("error: " ++ err) |> configPanel
+            text ("error: " ++ Error.toString err) |> configPanel
 
         Success _ ->
             text "Cool! One sec" |> configPanel

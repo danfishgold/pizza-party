@@ -16,6 +16,7 @@ import Dict exposing (Dict)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Font as Font
+import Error exposing (Error)
 import RoomId exposing (RoomId)
 import Route
 import Socket
@@ -35,16 +36,16 @@ type alias Model =
     , userCounts : Dict String Topping.Count
     , hostCount : Topping.Count
     , users : List User
-    , error : Maybe String
+    , error : Maybe Error
     }
 
 
 type Msg
     = AddSliceCount User Topping Int
     | AddHostSliceCount Topping Int
-    | UpdateGuestTripletFromSocket (Result String Triplet)
-    | GuestJoined (Result String User)
-    | GuestLeft (Result String User)
+    | UpdateGuestTripletFromSocket (Result Error Triplet)
+    | GuestJoined (Result Error User)
+    | GuestLeft (Result Error User)
     | KickOut User
 
 
@@ -182,12 +183,6 @@ view model =
             [ title "pizza party"
             , text <| "party id: " ++ RoomId.toString model.roomId
             ]
-        , case model.error of
-            Nothing ->
-                Element.none
-
-            Just err ->
-                title err
         , column [ padding 50, spacing 30 ]
             [ model.userCounts
                 |> Dict.values

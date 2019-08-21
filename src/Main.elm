@@ -3,6 +3,7 @@ module Main exposing (main)
 import Browser exposing (application)
 import Browser.Navigation as Nav
 import Element exposing (..)
+import Error exposing (Error)
 import Page.Create as Create
 import Page.Guest as Guest
 import Page.Home as Home
@@ -61,7 +62,7 @@ type alias Flags =
     ()
 
 
-errorMessage : Model -> Maybe String
+errorMessage : Model -> Maybe Error
 errorMessage model =
     case model.state of
         Host { error } ->

@@ -13,6 +13,7 @@ port module Socket exposing
     )
 
 import Config exposing (Config)
+import Error exposing (Error)
 import Json.Decode as Decode
 import Json.Encode as Encode exposing (Value)
 import RoomId exposing (RoomId)
@@ -27,32 +28,32 @@ decodeResult Decode.int { "ok": 3 } => Ok 3
 decodeResult Decode.int { "ok": "3" } => Err "Json decode error: whatever"
 
 -}
-decodeResult : Decode.Decoder a -> Value -> Result String a
+decodeResult : Decode.Decoder a -> Value -> Result Error a
 decodeResult successDecoder value =
     case
         Decode.decodeValue
             (Decode.oneOf
                 [ Decode.field "ok" successDecoder |> Decode.map Ok
-                , Decode.field "error" Decode.string |> Decode.map Err
+                , Decode.field "error" Error.decoder |> Decode.map Err
                 ]
             )
             value
     of
         Err decodeError ->
-            Err <| Decode.errorToString decodeError
+            Err <| Error.JsonDecodeError <| Decode.errorToString decodeError
 
         Ok result ->
             result
 
 
-encodeResult : (a -> Value) -> Result String a -> Value
+encodeResult : (a -> Value) -> Result Error a -> Value
 encodeResult encodeSuccess result =
     case result of
         Ok success ->
             Encode.object [ ( "ok", encodeSuccess success ) ]
 
         Err err ->
-            Encode.object [ ( "error", Encode.string err ) ]
+            Encode.object [ ( "error", Error.encode err ) ]
 
 
 
@@ -70,7 +71,7 @@ createRoom config =
     sendCreateRoom (Encode.object [ ( "config", Config.encode config ) ])
 
 
-onRoomCreated : (Result String RoomId -> msg) -> Sub msg
+onRoomCreated : (Result Error RoomId -> msg) -> Sub msg
 onRoomCreated toMsg =
     receiveCreateRoomResponse
         (decodeResult (Decode.field "roomId" RoomId.decoder)
@@ -98,7 +99,7 @@ joinRoom roomId user =
         )
 
 
-onRoomJoined : (Result String Config -> msg) -> Sub msg
+onRoomJoined : (Result Error Config -> msg) -> Sub msg
 onRoomJoined toMsg =
     receiveJoinRoomResponse
         (decodeResult (Decode.field "config" Config.decoder) >> toMsg)
@@ -119,7 +120,7 @@ updateTriplet triplet =
     sendUpdateTriplet (encodeResult Triplet.encode (Ok triplet))
 
 
-onTripletUpdate : (Result String Triplet -> msg) -> Sub msg
+onTripletUpdate : (Result Error Triplet -> msg) -> Sub msg
 onTripletUpdate toMsg =
     receiveUpdateTriplet
         (decodeResult Triplet.decoder
@@ -140,13 +141,13 @@ port receiveGuestLeft : (Value -> msg) -> Sub msg
 port receiveHostLeft : (Value -> msg) -> Sub msg
 
 
-onGuestJoined : (Result String User -> msg) -> Sub msg
+onGuestJoined : (Result Error User -> msg) -> Sub msg
 onGuestJoined toMsg =
     receiveGuestJoined
         (decodeResult (Decode.field "user" User.decoder) >> toMsg)
 
 
-onGuestLeft : (Result String User -> msg) -> Sub msg
+onGuestLeft : (Result Error User -> msg) -> Sub msg
 onGuestLeft toMsg =
     receiveGuestLeft
         (decodeResult (Decode.field "user" User.decoder) >> toMsg)
@@ -172,7 +173,7 @@ kickOut user =
     sendKickGuest (encodeResult User.encode (Ok user))
 
 
-onKickOut : (Result String User -> msg) -> Sub msg
+onKickOut : (Result Error User -> msg) -> Sub msg
 onKickOut toMsg =
     receiveKickGuest
         (decodeResult (Decode.field "user" User.decoder) >> toMsg)

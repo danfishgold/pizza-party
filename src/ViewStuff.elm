@@ -8,6 +8,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input exposing (button)
+import Error exposing (Error)
 import Html.Events
 import Json.Decode as Decode
 import Topping exposing (BaseTopping, Topping)
@@ -242,7 +243,7 @@ configPanel content =
         content
 
 
-errorOverlay : String -> msg -> Element msg
+errorOverlay : Error -> msg -> Element msg
 errorOverlay error reload =
     el
         [ Background.color (rgba 0.5 0.5 0.5 0.5)
@@ -251,7 +252,7 @@ errorOverlay error reload =
         , inFront
             (configPanel
                 (column [ width fill, height fill, spaceEvenly ]
-                    [ el [] (text error), el [ centerX ] (pillButton reload "reload") ]
+                    [ el [] (text (Error.toString error)), el [ centerX ] (pillButton reload "reload") ]
                 )
             )
         ]

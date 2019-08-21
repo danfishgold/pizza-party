@@ -11,6 +11,7 @@ import Browser.Navigation as Nav
 import Config exposing (Config)
 import Count
 import Element exposing (..)
+import Error exposing (Error)
 import RoomId exposing (RoomId)
 import Socket
 import Topping exposing (Topping)
@@ -28,15 +29,15 @@ type alias Model =
     , config : Config
     , user : User
     , counts : Topping.Count
-    , error : Maybe String
+    , error : Maybe Error
     }
 
 
 type Msg
     = AddSliceCount Topping Int
-    | UpdateTripletFromSocket (Result String Triplet)
+    | UpdateTripletFromSocket (Result Error Triplet)
     | HostDisconnected
-    | KickedOut (Result String User)
+    | KickedOut (Result Error User)
 
 
 
@@ -90,13 +91,13 @@ update key msg model =
             )
 
         HostDisconnected ->
-            ( { model | error = Just "The host disconnected :(" }
+            ( { model | error = Just Error.HostLeft }
             , Cmd.none
             )
 
         KickedOut (Ok kickedOutUser) ->
             if kickedOutUser == model.user then
-                ( { model | error = Just "You were kicked out by the host" }
+                ( { model | error = Just Error.YouWereKickedOut }
                 , Cmd.none
                 )
 

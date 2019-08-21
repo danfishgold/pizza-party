@@ -1,5 +1,6 @@
 module RoomId exposing (RoomId, decoder, encode, fromString, toString)
 
+import Error exposing (Error)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)
 
@@ -8,13 +9,13 @@ type RoomId
     = RoomId String
 
 
-fromString : String -> Result String RoomId
+fromString : String -> Result Error RoomId
 fromString str =
     if String.isEmpty str then
-        Err "empty room id"
+        Err Error.EmptyRoomId
 
     else if String.toInt str == Nothing then
-        Err "room id is not a number"
+        Err Error.RoomIdNotANumber
 
     else
         Ok (RoomId str)

@@ -4,6 +4,7 @@ import Browser.Navigation as Nav
 import Config exposing (Config)
 import Element exposing (..)
 import Element.Input as Input
+import Error exposing (Error)
 import RemoteData exposing (RemoteData(..))
 import RoomId exposing (RoomId)
 import Route
@@ -19,14 +20,14 @@ import ViewStuff exposing (configPanel, onEnter, pillButton, title)
 type alias Model =
     { roomId : RoomId
     , user : User
-    , submission : RemoteData String Config
+    , submission : RemoteData Error Config
     }
 
 
 type Msg
     = EditUsername String
     | Submit
-    | JoiningResult (Result String Config)
+    | JoiningResult (Result Error Config)
 
 
 
@@ -55,7 +56,7 @@ update key msg model =
 
         Submit ->
             if String.isEmpty model.user.name then
-                ( { model | submission = Failure "empty username" }, Cmd.none )
+                ( { model | submission = Failure Error.EmptyUsername }, Cmd.none )
 
             else
                 ( { model | submission = Loading }
@@ -98,7 +99,7 @@ view model =
         , pillButton Submit buttonTitle
         , case model.submission of
             Failure err ->
-                text err
+                text (Error.toString err)
 
             _ ->
                 Element.none

@@ -147,7 +147,7 @@ io.on('connection', socket => {
       })
     } else {
       socket.emit('create-room-response', {
-        error: 'The user is already a host',
+        error: 'already-host',
       })
     }
   })
@@ -155,11 +155,11 @@ io.on('connection', socket => {
   socket.on('join-room', ({ roomId, user }) => {
     if (!roomIdExists(roomId)) {
       socket.emit('join-room-response', {
-        error: "There's no room with this id",
+        error: 'no-room-with-id',
       })
     } else if (nameAlreadyExistsInRoom(user.name, roomId)) {
       socket.emit('join-room-response', {
-        error: 'That name is already used',
+        error: 'existing-username',
       })
     } else {
       addHandlers(socket, roomId)
