@@ -6,7 +6,7 @@ import Json.Encode as Encode exposing (Value)
 
 
 type RoomId
-    = RoomId String
+    = RoomId Int
 
 
 fromString : String -> Result Error RoomId
@@ -14,23 +14,34 @@ fromString str =
     if String.isEmpty str then
         Err Error.EmptyRoomId
 
-    else if String.toInt str == Nothing then
-        Err Error.RoomIdNotANumber
-
     else
-        Ok (RoomId str)
+        case String.toInt str of
+            Nothing ->
+                Err Error.RoomIdNotANumber
+
+            Just id ->
+                Ok (RoomId id)
 
 
 toString : RoomId -> String
-toString (RoomId str) =
-    str
+toString (RoomId id) =
+    String.fromInt id
 
 
 decoder : Decoder RoomId
 decoder =
-    Decode.map RoomId Decode.string
+    Decode.string
+        |> Decode.andThen
+            (\str ->
+                case fromString str of
+                    Err err ->
+                        Decode.fail (Error.toString err)
+
+                    Ok id ->
+                        Decode.succeed id
+            )
 
 
 encode : RoomId -> Value
-encode (RoomId str) =
-    Encode.string str
+encode (RoomId id) =
+    Encode.string (String.fromInt id)
