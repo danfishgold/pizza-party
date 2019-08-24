@@ -1,6 +1,7 @@
 module Page.Join exposing (Model, Msg, init, subscriptions, update, view)
 
 import Browser.Navigation as Nav
+import Buttons exposing (pillButton)
 import Config exposing (Config)
 import Element exposing (..)
 import Element.Input as Input
@@ -8,9 +9,10 @@ import Error exposing (Error)
 import RemoteData exposing (RemoteData(..))
 import RoomId exposing (RoomId)
 import Route
+import Size exposing (Size)
 import Socket
 import User exposing (User)
-import ViewStuff exposing (configPanel, onEnter, pillButton, title)
+import ViewStuff exposing (configPanel, onEnter, title)
 
 
 
@@ -74,8 +76,8 @@ update key msg model =
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
+view : Size -> Model -> Element Msg
+view size model =
     let
         buttonTitle =
             if model.submission == Loading then
@@ -84,10 +86,10 @@ view model =
             else
                 "join party"
     in
-    column [ spacing 50 ]
+    column [ spacing 50, centerX, centerY ]
         [ title "join the party"
         , if model.submission == NotAsked then
-            Input.text [ onEnter Submit ]
+            Input.text [ Input.focusedOnLoad, onEnter Submit ]
                 { onChange = EditUsername
                 , text = model.user.name
                 , placeholder = Nothing
@@ -104,7 +106,7 @@ view model =
             _ ->
                 Element.none
         ]
-        |> configPanel
+        |> configPanel size
 
 
 

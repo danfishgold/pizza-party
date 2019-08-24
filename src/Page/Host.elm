@@ -9,6 +9,7 @@ module Page.Host exposing
     )
 
 import Browser.Navigation as Nav
+import Buttons exposing (redLink)
 import Config exposing (Config)
 import Count
 import Diagram
@@ -19,11 +20,12 @@ import Element.Font as Font
 import Error exposing (Error)
 import RoomId exposing (RoomId)
 import Route
+import Size exposing (Size)
 import Socket
 import Topping exposing (BaseTopping, Topping)
 import ToppingTriplet exposing (Triplet)
 import User exposing (User)
-import ViewStuff exposing (guestUserView, redLink, title)
+import ViewStuff exposing (guestUserView, title)
 
 
 
@@ -53,12 +55,9 @@ type Msg
 -- INIT
 
 
-init : RoomId -> ( Model, Cmd Msg )
-init roomId =
-    ( { config =
-            { slices = { slicesPerPart = 2, partsPerPie = 4 }
-            , toppings = { base = Topping.all, maxToppingsPerSlice = 1 }
-            }
+init : RoomId -> Config -> ( Model, Cmd Msg )
+init roomId config =
+    ( { config = config
       , userCounts = Dict.empty
       , hostCount = Topping.emptyCount
       , users = []
@@ -73,7 +72,7 @@ fake : RoomId -> ( Model, Cmd Msg )
 fake roomId =
     let
         ( model, cmd ) =
-            init roomId
+            init roomId Config.default
     in
     ( { model
         | users = [ User "Fake" ]
@@ -171,8 +170,8 @@ removeGuest user model =
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
+view : Size -> Model -> Element Msg
+view size model =
     column
         [ width fill ]
         [ row

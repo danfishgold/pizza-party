@@ -1,14 +1,16 @@
 module Page.Create exposing (Model, Msg, configForHostModel, init, subscriptions, update, view)
 
 import Browser.Navigation as Nav
+import Buttons exposing (pillButton, pillSegmentedControl)
 import Config exposing (Config)
 import Element exposing (..)
 import Error exposing (Error)
 import RemoteData exposing (RemoteData(..))
 import RoomId exposing (RoomId)
 import Route
+import Size exposing (Size)
 import Socket
-import ViewStuff exposing (configPanel, pillButton)
+import ViewStuff exposing (configPanel)
 
 
 
@@ -23,6 +25,7 @@ type alias Model =
 
 type Msg
     = CreateRoom
+    | SetSomething Int
     | CreationResult (Result Error RoomId)
 
 
@@ -55,6 +58,9 @@ update key msg model =
         CreationResult (Err err) ->
             ( { model | submission = Failure err }, Cmd.none )
 
+        SetSomething _ ->
+            ( model, Cmd.none )
+
 
 configForHostModel : RoomId -> Model -> Maybe RoomId
 configForHostModel roomId model =
@@ -74,25 +80,26 @@ configForHostModel roomId model =
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
+view : Size -> Model -> Element Msg
+view size model =
     case model.submission of
         NotAsked ->
-            column []
+            column [ spacing 20 ]
                 [ paragraph []
                     [ text "New Party" ]
+                , pillSegmentedControl ( 2, [ 3 ], 4 ) 2 String.fromInt SetSomething
                 , pillButton CreateRoom "Start"
                 ]
-                |> configPanel
+                |> configPanel size
 
         Loading ->
-            text "Setting up..." |> configPanel
+            text "Setting up..." |> configPanel size
 
         Failure err ->
-            text ("error: " ++ Error.toString err) |> configPanel
+            text ("error: " ++ Error.toString err) |> configPanel size
 
         Success _ ->
-            text "Cool! One sec" |> configPanel
+            text "Cool! One sec" |> configPanel size
 
 
 

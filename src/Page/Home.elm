@@ -1,6 +1,7 @@
 module Page.Home exposing (Model, Msg, init, subscriptions, update, view)
 
 import Browser.Navigation as Nav
+import Buttons exposing (pillButton)
 import Element exposing (..)
 import Element.Font as Font
 import Element.Input as Input
@@ -8,7 +9,8 @@ import Error exposing (Error)
 import RemoteData exposing (RemoteData(..))
 import RoomId
 import Route
-import ViewStuff exposing (configPanel, pillButton, title)
+import Size exposing (Size)
+import ViewStuff exposing (configPanel, subtitle, title)
 
 
 
@@ -66,23 +68,41 @@ update key msg model =
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
-    [ el [ centerX ] (title "pizza party")
-    , column [ width shrink, centerX, spacing 20 ]
-        [ el [ width fill ] <| pillButton CreateNewRoom "create a new party"
-        , el [ width fill ] <| pillButton JoinExistingRoom "join an existing party"
-        , Input.text [] { onChange = EditRoomId, label = Input.labelAbove [] (text "room id"), placeholder = Nothing, text = model.roomIdString }
+view : Size -> Model -> Element Msg
+view size model =
+    column
+        [ spacing 50
+        , height fill
+        , width fill
         ]
-    , paragraph [ Font.size 14, width (shrink |> maximum 500) ]
-        [ text "if you're not sure what to do, click the first button. "
-        , text "if you're not sure what to do but someone told you to go to this website and enter a couple of digits, click the second one."
-        ]
-    ]
-        |> column
-            [ spacing 50
+        [ title "pizza party"
+        , column [ width fill, spacing 30 ]
+            [ column [ width fill, spacing 10 ]
+                [ subtitle "join a party"
+                , wrappedRow [ width fill, spacing 20 ]
+                    [ Input.text [ width (fill |> minimum 100 |> maximum 150) ]
+                        { onChange = EditRoomId
+                        , label = Input.labelHidden "party id"
+                        , placeholder = Just (Input.placeholder [] (text "party id"))
+                        , text = model.roomIdString
+                        }
+                    , pillButton JoinExistingRoom "join"
+                    ]
+                , case model.error of
+                    Nothing ->
+                        Element.none
+
+                    Just error ->
+                        text (Error.toString error)
+                ]
+            , column [ spacing 10, width fill ]
+                [ subtitle "alternatively,"
+                , paragraph [] [ text "and this is especially true if you have no idea what this website is," ]
+                , el [ centerX ] <| pillButton CreateNewRoom "host a party"
+                ]
             ]
-        |> configPanel
+        ]
+        |> configPanel size
 
 
 

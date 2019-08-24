@@ -13,6 +13,7 @@ import Count
 import Element exposing (..)
 import Error exposing (Error)
 import RoomId exposing (RoomId)
+import Size exposing (Size)
 import Socket
 import Topping exposing (Topping)
 import ToppingTriplet exposing (Triplet)
@@ -114,8 +115,8 @@ update key msg model =
 -- VIEW
 
 
-view : Model -> Element Msg
-view model =
+view : Size -> Model -> Element Msg
+view size model =
     guestUserView AddSliceCount model.counts model.config.toppings.base
 
 

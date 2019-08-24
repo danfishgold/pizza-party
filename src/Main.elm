@@ -11,6 +11,7 @@ import Page.Host as Host
 import Page.Join as Join
 import RemoteData exposing (RemoteData(..))
 import Route
+import Size exposing (Size)
 import Time
 import Url exposing (Url)
 import ViewStuff exposing (errorOverlay)
@@ -32,18 +33,19 @@ main =
 -- TYPES
 
 
+type alias Model =
+    { state : State
+    , key : Nav.Key
+    , size : Size
+    }
+
+
 type State
     = Home Home.Model
     | Create Create.Model
     | Join Join.Model
     | Guest Guest.Model
     | Host Host.Model
-
-
-type alias Model =
-    { state : State
-    , key : Nav.Key
-    }
 
 
 type Msg
@@ -56,6 +58,7 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | AnnoyingElmBug
     | Reload
+    | SetSize Size
 
 
 type alias Flags =
@@ -68,8 +71,8 @@ errorMessage model =
         Host { error } ->
             error
 
-        Home { error } ->
-            error
+        Home _ ->
+            Nothing
 
         Create { submission } ->
             case submission of
@@ -97,10 +100,15 @@ errorMessage model =
 
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init () url key =
-    updateModelWithUrl url
-        { state = Home (Tuple.first Home.init)
-        , key = key
-        }
+    let
+        ( model, pageCmd ) =
+            updateModelWithUrl url
+                { state = Home (Tuple.first Home.init)
+                , key = key
+                , size = Size 0 0
+                }
+    in
+    ( model, Cmd.batch [ pageCmd, Size.get SetSize ] )
 
 
 
@@ -115,6 +123,20 @@ update msg model =
 
         ( _, Reload ) ->
             ( model, Route.reload )
+
+        ( _, SetSize size ) ->
+            ( { model | size = size }, Cmd.none )
+
+        ( _, UrlChanged url ) ->
+            updateModelWithUrl url model
+
+        ( _, LinkClicked urlRequest ) ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.key (Url.toString url) )
+
+                Browser.External href ->
+                    ( model, Nav.load href )
 
         ( Home subModel, HomeMsg subMsg ) ->
             mapUpdate Home HomeMsg (Home.update model.key subMsg subModel) model
@@ -145,17 +167,6 @@ update msg model =
 
         ( _, GuestMsg _ ) ->
             ( model, Cmd.none )
-
-        ( _, UrlChanged url ) ->
-            updateModelWithUrl url model
-
-        ( _, LinkClicked urlRequest ) ->
-            case urlRequest of
-                Browser.Internal url ->
-                    ( model, Nav.pushUrl model.key (Url.toString url) )
-
-                Browser.External href ->
-                    ( model, Nav.load href )
 
 
 mapUpdate : (subModel -> State) -> (subMsg -> Msg) -> ( subModel, Cmd subMsg ) -> Model -> ( Model, Cmd Msg )
@@ -194,7 +205,7 @@ updateModelWithUrl url model =
                     case subModel.submission of
                         Success roomId_ ->
                             if roomId == roomId_ then
-                                mapUpdate Host HostMsg (Host.init roomId) model
+                                mapUpdate Host HostMsg (Host.init roomId subModel.config) model
 
                             else
                                 ( model, Route.replace model.key Route.Create )
@@ -225,7 +236,7 @@ view model =
                     inFront Element.none
 
                 Just err ->
-                    inFront (errorOverlay err Reload)
+                    inFront (errorOverlay model.size err Reload)
             ]
             (body model)
         ]
@@ -237,19 +248,19 @@ body : Model -> Element Msg
 body model =
     case model.state of
         Home subModel ->
-            Home.view subModel |> Element.map HomeMsg
+            Home.view model.size subModel |> Element.map HomeMsg
 
         Create subModel ->
-            Create.view subModel |> Element.map CreateMsg
+            Create.view model.size subModel |> Element.map CreateMsg
 
         Join subModel ->
-            Join.view subModel |> Element.map JoinMsg
+            Join.view model.size subModel |> Element.map JoinMsg
 
         Host host ->
-            Host.view host |> Element.map HostMsg
+            Host.view model.size host |> Element.map HostMsg
 
         Guest guest ->
-            Guest.view guest |> Element.map GuestMsg
+            Guest.view model.size guest |> Element.map GuestMsg
 
 
 
@@ -282,4 +293,5 @@ subscriptions model =
            has subscriptions that will definitely fire.
         -}
         , Time.every 1000 (always AnnoyingElmBug)
+        , Size.onChange SetSize
         ]
