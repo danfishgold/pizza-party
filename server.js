@@ -138,6 +138,18 @@ function addHandlers(socket, roomId) {
 }
 
 io.on('connection', socket => {
+  socket.on('find-room', ({ roomId }) => {
+    if (roomIdExists(roomId)) {
+      socket.emit('find-room-response', {
+        ok: { roomId },
+      })
+    } else {
+      socket.emit('find-room-response', {
+        error: { type: 'no-room-with-id', payload: roomId },
+      })
+    }
+  })
+
   socket.on('create-room', ({ config }) => {
     if (!isAlreadyHost(socket)) {
       const roomId = createRandomRoomWithHost(socket, config)

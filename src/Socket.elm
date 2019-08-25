@@ -1,5 +1,6 @@
 port module Socket exposing
     ( createRoom
+    , findRoom
     , joinRoom
     , kickOut
     , onGuestJoined
@@ -7,6 +8,7 @@ port module Socket exposing
     , onHostLeft
     , onKickOut
     , onRoomCreated
+    , onRoomFound
     , onRoomJoined
     , onTripletUpdate
     , updateTriplet
@@ -83,10 +85,21 @@ onRoomCreated toMsg =
 -- JOIN
 
 
+port sendFindRoom : Value -> Cmd msg
+
+
 port sendJoinRoom : Value -> Cmd msg
 
 
+port receiveRoomFoundResponse : (Value -> msg) -> Sub msg
+
+
 port receiveJoinRoomResponse : (Value -> msg) -> Sub msg
+
+
+findRoom : RoomId -> Cmd msg
+findRoom roomId =
+    sendFindRoom (Encode.object [ ( "roomId", RoomId.encode roomId ) ])
 
 
 joinRoom : RoomId -> User -> Cmd msg
@@ -97,6 +110,12 @@ joinRoom roomId user =
             , ( "user", User.encode user )
             ]
         )
+
+
+onRoomFound : (Result Error RoomId -> msg) -> Sub msg
+onRoomFound toMsg =
+    receiveRoomFoundResponse
+        (decodeResult (Decode.field "roomId" RoomId.decoder) >> toMsg)
 
 
 onRoomJoined : (Result Error Config -> msg) -> Sub msg

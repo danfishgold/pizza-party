@@ -8,6 +8,10 @@ app.ports.sendCreateRoom.subscribe(data => {
   socket.emit('create-room', data)
 })
 
+app.ports.sendFindRoom.subscribe(data => {
+  socket.emit('find-room', data)
+})
+
 app.ports.sendJoinRoom.subscribe(data => {
   socket.emit('join-room', data)
 })
@@ -25,6 +29,11 @@ app.ports.sendKickGuest.subscribe(data => {
 socket.on('create-room-response', data => {
   console.log('create-room-response')
   app.ports.receiveCreateRoomResponse.send(data)
+})
+
+socket.on('find-room-response', data => {
+  console.log('find-room-response')
+  app.ports.receiveRoomFoundResponse.send(data)
 })
 
 socket.on('join-room-response', data => {

@@ -7,9 +7,10 @@ import Element.Font as Font
 import Element.Input as Input
 import Error exposing (Error)
 import RemoteData exposing (RemoteData(..))
-import RoomId
+import RoomId exposing (RoomId)
 import Route
 import Size exposing (Size)
+import Socket
 import ViewStuff exposing (configPanel, subtitle, title)
 
 
@@ -19,13 +20,14 @@ import ViewStuff exposing (configPanel, subtitle, title)
 
 type alias Model =
     { roomIdString : String
-    , error : Maybe Error
+    , submission : RemoteData Error RoomId
     }
 
 
 type Msg
     = EditRoomId String
     | JoinExistingRoom
+    | RoomSearchResult (Result Error RoomId)
     | CreateNewRoom
 
 
@@ -36,7 +38,7 @@ type Msg
 init : ( Model, Cmd Msg )
 init =
     ( { roomIdString = ""
-      , error = Nothing
+      , submission = NotAsked
       }
     , Cmd.none
     )
@@ -55,10 +57,16 @@ update key msg model =
         JoinExistingRoom ->
             case RoomId.fromString model.roomIdString of
                 Err err ->
-                    ( { model | error = Just err }, Cmd.none )
+                    ( { model | submission = Failure err }, Cmd.none )
 
                 Ok roomId ->
-                    ( model, Route.push key (Route.Join roomId) )
+                    ( { model | submission = Loading }, Socket.findRoom roomId )
+
+        RoomSearchResult (Ok roomId) ->
+            ( { model | submission = Success roomId }, Route.push key (Route.Join roomId) )
+
+        RoomSearchResult (Err error) ->
+            ( { model | submission = Failure error }, Cmd.none )
 
         CreateNewRoom ->
             ( model, Route.push key Route.Create )
@@ -88,12 +96,12 @@ view size model =
                         }
                     , pillButton JoinExistingRoom "join"
                     ]
-                , case model.error of
-                    Nothing ->
-                        Element.none
-
-                    Just error ->
+                , case model.submission of
+                    Failure error ->
                         text (Error.toString error)
+
+                    _ ->
+                        Element.none
                 ]
             , column [ spacing 10, width fill ]
                 [ subtitle "alternatively,"
@@ -110,5 +118,10 @@ view size model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.none
+subscriptions model =
+    case model.submission of
+        Loading ->
+            Socket.onRoomFound RoomSearchResult
+
+        _ ->
+            Sub.none
