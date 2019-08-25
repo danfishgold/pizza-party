@@ -155,11 +155,11 @@ io.on('connection', socket => {
   socket.on('join-room', ({ roomId, user }) => {
     if (!roomIdExists(roomId)) {
       socket.emit('join-room-response', {
-        error: 'no-room-with-id',
+        error: { type: 'no-room-with-id', payload: roomId },
       })
     } else if (nameAlreadyExistsInRoom(user.name, roomId)) {
       socket.emit('join-room-response', {
-        error: 'existing-username',
+        error: { type: 'existing-username', payload: user.name },
       })
     } else {
       addHandlers(socket, roomId)

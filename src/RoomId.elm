@@ -17,7 +17,7 @@ fromString str =
     else
         case String.toInt str of
             Nothing ->
-                Err Error.RoomIdNotANumber
+                Err (Error.RoomIdNotANumber str)
 
             Just id ->
                 Ok (RoomId id)
