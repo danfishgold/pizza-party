@@ -1,16 +1,16 @@
 module Page.Create exposing (Model, Msg, configForHostModel, init, subscriptions, update, view)
 
 import Browser.Navigation as Nav
-import Buttons exposing (pillButton, pillSegmentedControl)
 import Config exposing (Config)
 import Element exposing (..)
 import Error exposing (Error)
+import Pill
 import RemoteData exposing (RemoteData(..))
 import RoomId exposing (RoomId)
 import Route
 import Size exposing (Size)
 import Socket
-import ViewStuff exposing (configPanel)
+import ViewStuff exposing (..)
 
 
 
@@ -84,11 +84,10 @@ view : Size -> Model -> Element Msg
 view size model =
     case model.submission of
         NotAsked ->
-            column [ spacing 20 ]
-                [ paragraph []
-                    [ text "New Party" ]
-                , pillSegmentedControl ( 2, [ 3 ], 4 ) 2 String.fromInt SetSomething
-                , pillButton CreateRoom "Start"
+            column [ spacing 20, width fill ]
+                [ title "new party"
+                , Pill.segmentedControl ( 2, [ 3 ], 4 ) 2 String.fromInt SetSomething
+                , Pill.button [] CreateRoom "Start"
                 ]
                 |> configPanel size
 

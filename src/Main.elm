@@ -68,11 +68,14 @@ type alias Flags =
 errorMessage : Model -> Maybe Error
 errorMessage model =
     case model.state of
-        Host { error } ->
-            error
-
         Home _ ->
             Nothing
+
+        Join _ ->
+            Nothing
+
+        Guest { error } ->
+            error
 
         Create { submission } ->
             case submission of
@@ -82,15 +85,7 @@ errorMessage model =
                 _ ->
                     Nothing
 
-        Join { submission } ->
-            case submission of
-                Failure error ->
-                    Just error
-
-                _ ->
-                    Nothing
-
-        Guest { error } ->
+        Host { error } ->
             error
 
 
@@ -230,16 +225,20 @@ updateModelWithUrl url model =
 view : Model -> Browser.Document Msg
 view model =
     { body =
-        [ Element.layout
-            [ case errorMessage model of
-                Nothing ->
-                    inFront Element.none
+        if model.size == Size 0 0 then
+            []
 
-                Just err ->
-                    inFront (errorOverlay model.size err Reload)
+        else
+            [ Element.layout
+                [ case errorMessage model of
+                    Nothing ->
+                        inFront Element.none
+
+                    Just err ->
+                        inFront (errorOverlay model.size err Reload)
+                ]
+                (body model)
             ]
-            (body model)
-        ]
     , title = "Pizza Party"
     }
 

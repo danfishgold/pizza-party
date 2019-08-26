@@ -9,7 +9,7 @@ module Page.Host exposing
     )
 
 import Browser.Navigation as Nav
-import Buttons exposing (redLink)
+import Pill
 import Config exposing (Config)
 import Count
 import Diagram
@@ -25,7 +25,7 @@ import Socket
 import Topping exposing (BaseTopping, Topping)
 import ToppingTriplet exposing (Triplet)
 import User exposing (User)
-import ViewStuff exposing (guestUserView, title)
+import ViewStuff exposing (guestUserView, redLink, title)
 
 
 

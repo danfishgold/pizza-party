@@ -1,11 +1,11 @@
 module Page.Join exposing (Model, Msg, init, subscriptions, update, view)
 
 import Browser.Navigation as Nav
-import Buttons exposing (pillButton)
 import Config exposing (Config)
 import Element exposing (..)
 import Element.Input as Input
 import Error exposing (Error)
+import Pill
 import RemoteData exposing (RemoteData(..))
 import RoomId exposing (RoomId)
 import Route
@@ -89,16 +89,20 @@ view size model =
     column [ spacing 50, centerX, centerY ]
         [ title "join the party"
         , if model.submission == NotAsked then
-            Input.text [ Input.focusedOnLoad, onEnter Submit ]
-                { onChange = EditUsername
-                , text = model.user.name
-                , placeholder = Nothing
-                , label = Input.labelAbove [] (text "choose a username")
-                }
+            column [ width fill, spacing 10 ]
+                [ Input.text [ Input.focusedOnLoad, onEnter Submit ]
+                    { onChange = EditUsername
+                    , text = model.user.name
+                    , placeholder = Nothing
+                    , label = Input.labelAbove [] (text "enter your name")
+                    }
+                , paragraph [ width fill ]
+                    [ text "the host of the party will see this name (other guests won't) so make sure they know it's you" ]
+                ]
 
           else
             Element.none
-        , pillButton Submit buttonTitle
+        , el [ centerX ] (Pill.button [] Submit buttonTitle)
         , case model.submission of
             Failure err ->
                 text (Error.toString err)

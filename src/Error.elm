@@ -117,10 +117,10 @@ toString error =
             "please enter your name"
 
         ExistingUsername username ->
-            "there's already someone with that name at this party. please be more specific"
+            "there's already someone with that name at this party. try using your full name (only the host will see this)"
 
         HostLeft ->
-            "the host left the party. awkward"
+            "the host left the party. awkward..."
 
         YouWereKickedOut ->
             "you were kicked out"

@@ -1,22 +1,25 @@
 module ViewStuff exposing
-    ( configPanel
+    ( blueLink
+    , configPanel
     , errorOverlay
     , guestUserView
     , onEnter
+    , redLink
     , subtitle
     , title
     )
 
-import Buttons exposing (pillButton, pillCounter)
 import Color
 import Count
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import Error exposing (Error)
 import Html.Events
 import Json.Decode as Decode
+import Pill
 import Size exposing (Size)
 import Topping exposing (BaseTopping, Topping)
 
@@ -83,7 +86,7 @@ toppingCounter decrease increase value topping =
             , paddingEach { top = 0, bottom = 0, right = 0, left = 7 }
             ]
             (text <| Topping.toString topping)
-        , pillCounter decrease increase value color
+        , Pill.counter decrease increase value color
         ]
 
 
@@ -94,6 +97,7 @@ title content =
         , Font.extraBold
         , Font.variant Font.smallCaps
         , Font.center
+        , centerX
         ]
         [ text content ]
 
@@ -149,8 +153,55 @@ errorOverlay size error reload =
         , inFront
             (configPanel size
                 (column [ width fill, height fill, spaceEvenly ]
-                    [ el [] (text (Error.toString error)), el [ centerX ] (pillButton reload "reload") ]
+                    [ el [] (text (Error.toString error)), el [ centerX ] (Pill.button [] reload "reload") ]
                 )
             )
         ]
         Element.none
+
+
+
+-- LINK BUTTONS
+
+
+type alias LinkColors =
+    { text : Color
+    , hoverFill : Color
+    }
+
+
+baseLinkButton : LinkColors -> msg -> String -> Element msg
+baseLinkButton colors onClick content =
+    el
+        [ Events.onClick onClick
+        , Font.underline
+        , Font.color colors.text
+        , padding 5
+        , mouseOver [ Background.color colors.hoverFill ]
+        , pointer
+        ]
+        (text content)
+
+
+blueLinkColors : LinkColors
+blueLinkColors =
+    { text = rgb 0 0 1
+    , hoverFill = rgb 0.9 0.9 1
+    }
+
+
+redLinkColors : LinkColors
+redLinkColors =
+    { text = rgb 1 0 0
+    , hoverFill = rgb 1 0.9 0.9
+    }
+
+
+blueLink : msg -> String -> Element msg
+blueLink =
+    baseLinkButton blueLinkColors
+
+
+redLink : msg -> String -> Element msg
+redLink =
+    baseLinkButton redLinkColors

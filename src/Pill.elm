@@ -1,9 +1,8 @@
-module Buttons exposing
-    ( blueLink
-    , pillButton
-    , pillCounter
-    , pillSegmentedControl
-    , redLink
+module Pill exposing
+    ( button
+    , container
+    , counter
+    , segmentedControl
     )
 
 import Element exposing (..)
@@ -11,21 +10,21 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
-import Element.Input exposing (button)
+import Element.Input as Input
 
 
 
 -- PILL BUTTONS
 
 
-type alias ButtonColors =
+type alias Colors =
     { fill : Color
     , hoverFill : Color
     , border : Color
     }
 
 
-standardColors : ButtonColors
+standardColors : Colors
 standardColors =
     { fill = rgb 1 1 1
     , hoverFill = rgb 0.9 0.9 0.9
@@ -84,8 +83,8 @@ sideBorders side =
         ]
 
 
-pillProps : ButtonColors -> Side -> Bool -> List (Element.Attribute msg)
-pillProps colors side withHover =
+props : Colors -> Side -> Bool -> List (Element.Attribute msg)
+props colors side withHover =
     sideBorders side
         ++ [ Border.color colors.border
            , Background.color colors.fill
@@ -100,32 +99,38 @@ pillProps colors side withHover =
            )
 
 
-pillButton : msg -> String -> Element msg
-pillButton onClick content =
-    button
-        (pillProps standardColors Round True ++ [ width shrink, paddingXY 25 10 ])
+container : List (Element.Attribute msg) -> Element msg -> Element msg
+container attrs inner =
+    el (props standardColors Round False ++ [ paddingXY 25 10 ] ++ attrs)
+        inner
+
+
+button : List (Element.Attribute msg) -> msg -> String -> Element msg
+button attrs onClick content =
+    Input.button
+        (props standardColors Round True ++ [ width shrink, paddingXY 25 10 ] ++ attrs)
         { onPress = Just onClick, label = text content }
 
 
-pillCounter : msg -> msg -> Int -> Element.Color -> Element msg
-pillCounter decrease increase value color =
+counter : msg -> msg -> Int -> Element.Color -> Element msg
+counter decrease increase value color =
     row [ height shrink ]
-        [ pillCounterButton Left decrease "-"
-        , el (pillProps { standardColors | fill = color } Middle False)
+        [ counterButton Left decrease "–"
+        , el (props { standardColors | fill = color } Middle False)
             (text <| String.fromInt value)
-        , pillCounterButton Right increase "+"
+        , counterButton Right increase "+"
         ]
 
 
-pillCounterButton : Side -> msg -> String -> Element msg
-pillCounterButton side onClick content =
-    button
-        (pillProps standardColors side True)
+counterButton : Side -> msg -> String -> Element msg
+counterButton side onClick content =
+    Input.button
+        (props standardColors side True)
         { onPress = Just onClick, label = text content }
 
 
-pillSegmentedControl : ( a, List a, a ) -> a -> (a -> String) -> (a -> msg) -> Element msg
-pillSegmentedControl ( first, middle, last ) selected toString onSelect =
+segmentedControl : ( a, List a, a ) -> a -> (a -> String) -> (a -> msg) -> Element msg
+segmentedControl ( first, middle, last ) selected toString onSelect =
     let
         sidedSegments =
             List.concat
@@ -134,18 +139,18 @@ pillSegmentedControl ( first, middle, last ) selected toString onSelect =
                 , [ ( last, Right ) ]
                 ]
 
-        segment ( value, side ) =
-            pillSegment side (onSelect value) (selected == value) (toString value)
+        segment_ ( value, side ) =
+            segment side (onSelect value) (selected == value) (toString value)
     in
     row []
-        (List.map segment sidedSegments)
+        (List.map segment_ sidedSegments)
 
 
-pillSegment : Side -> msg -> Bool -> String -> Element msg
-pillSegment side onSelect isSelected content =
-    button
+segment : Side -> msg -> Bool -> String -> Element msg
+segment side onSelect isSelected content =
+    Input.button
         (List.concat
-            [ pillProps standardColors side (not isSelected)
+            [ props standardColors side (not isSelected)
             , [ paddingXY 20 10
               , centerX
               , centerY
@@ -165,50 +170,3 @@ pillSegment side onSelect isSelected content =
                 Nothing
         , label = text content
         }
-
-
-
--- LINK BUTTONS
-
-
-type alias LinkColors =
-    { text : Color
-    , hoverFill : Color
-    }
-
-
-baseLinkButton : LinkColors -> msg -> String -> Element msg
-baseLinkButton colors onClick content =
-    el
-        [ Events.onClick onClick
-        , Font.underline
-        , Font.color colors.text
-        , padding 5
-        , mouseOver [ Background.color colors.hoverFill ]
-        , pointer
-        ]
-        (text content)
-
-
-blueLinkColors : LinkColors
-blueLinkColors =
-    { text = rgb 0 0 1
-    , hoverFill = rgb 0.9 0.9 1
-    }
-
-
-redLinkColors : LinkColors
-redLinkColors =
-    { text = rgb 1 0 0
-    , hoverFill = rgb 1 0.9 0.9
-    }
-
-
-blueLink : msg -> String -> Element msg
-blueLink =
-    baseLinkButton blueLinkColors
-
-
-redLink : msg -> String -> Element msg
-redLink =
-    baseLinkButton redLinkColors
