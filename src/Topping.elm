@@ -4,7 +4,6 @@ module Topping exposing
     , Key
     , Pair
     , Topping
-    , all
     , baseToppingDecoder
     , concatCounts
     , countFromList
@@ -14,7 +13,7 @@ module Topping exposing
     , encodeBaseTopping
     , filterZeros
     , fromBase
-    , toSortedList
+    , toList
     , toString
     )
 
@@ -76,24 +75,6 @@ fromBase base =
     { parts = [ base ] }
 
 
-all : List BaseTopping
-all =
-    [ "Plain"
-    , "Green Olives"
-    , "Black Olives"
-    , "Mushrooms"
-    , "Onion"
-    , "Corn"
-    , "Tomato"
-    , "Pineapple"
-    , "Peperoni"
-    , "Extra Cheese"
-    , "Tuna"
-    ]
-        |> List.sort
-        |> List.map BaseTopping
-
-
 type alias Count =
     Count.Count Topping Key
 
@@ -118,12 +99,11 @@ toString { parts } =
     List.map .name parts |> String.join " + "
 
 
-toSortedList : List BaseTopping -> Count -> List Topping
-toSortedList baseToppings count =
+toList : List BaseTopping -> Count -> List Topping
+toList baseToppings count =
     let
         simple =
             List.map fromBase baseToppings
-                |> List.sortBy toString
 
         extras =
             Count.keys count

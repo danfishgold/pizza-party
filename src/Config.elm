@@ -13,12 +13,45 @@ type alias Config =
 
 default : Config
 default =
+    dominos
+
+
+dominos : Config
+dominos =
     { slices =
         { slicesPerPart = 2
         , partsPerPie = 4
         }
     , toppings =
-        { base = Topping.all
+        { base =
+            [ "plain"
+            , "bulgarian cheese"
+            , "goat cheese"
+            , "extra cheese"
+            , "tuna"
+            , "anchovy"
+            , "beef"
+            , "peperoni"
+            , "salami"
+            , "green olives"
+            , "kalamata olives"
+            , "black olives"
+            , "mushrooms"
+            , "corn"
+            , "garlic"
+            , "red onion"
+            , "hot pepper"
+            , "tomato"
+            , "pineapple"
+            , "roasted peppers"
+            , "green pepper"
+            , "artichoke"
+            , "cauliflower"
+            , "spinach"
+            , "broccoli"
+            , "cherry tomatoes"
+            ]
+                |> List.map BaseTopping
         , maxToppingsPerSlice = 1
         }
     }

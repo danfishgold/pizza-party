@@ -53,7 +53,7 @@ guestUserView modify count baseToppings =
     in
     count
         |> Topping.filterZeros
-        |> Topping.toSortedList baseToppings
+        |> Topping.toList baseToppings
         |> List.map counter
         |> wrappedRow [ spacing 10, width shrink, centerX ]
 

@@ -77,7 +77,7 @@ fake roomId =
     ( { model
         | users = [ User "Fake" ]
         , hostCount =
-            Topping.all
+            Config.default.toppings.base
                 |> List.take 5
                 |> List.map Topping.fromBase
                 |> List.indexedMap (\i topping -> ( topping, 1 + i // 2 ))
