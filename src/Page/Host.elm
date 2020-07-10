@@ -9,15 +9,17 @@ module Page.Host exposing
     )
 
 import Browser.Navigation as Nav
-import Pill
 import Config exposing (Config)
 import Count
 import Diagram
 import Dict exposing (Dict)
 import Element exposing (..)
 import Element.Background as Background
+import Element.Border as Border
 import Element.Font as Font
 import Error exposing (Error)
+import Html.Attributes exposing (style)
+import Pill
 import RoomId exposing (RoomId)
 import Route
 import Size exposing (Size)
@@ -170,14 +172,23 @@ removeGuest user model =
 -- VIEW
 
 
-view : Size -> Model -> Element Msg
-view size model =
+view : String -> Size -> Model -> Element Msg
+view baseUrl size model =
     column
         [ width fill ]
         [ row
             [ width fill
-            , Background.color (rgb 1 0.7 0.5)
+            , Border.widthEach
+                { top = 0
+                , left = 0
+                , right = 0
+                , bottom = 2
+                }
             , padding 30
+            , htmlAttribute <| style "z-index" "1"
+            , htmlAttribute <| style "position" "sticky"
+            , htmlAttribute <| style "top" "0"
+            , Background.color <| rgb 255 255 255
             ]
             [ title "pizza party"
             , text <| "party id: " ++ RoomId.toString model.roomId
@@ -196,12 +207,11 @@ view size model =
                 column []
                     [ text "But nobody came."
                     , paragraph []
-                        [ text "(Tell guests to enter their order on "
+                        [ text "tell guests to enter their order on "
                         , link [ Font.underline, Font.color (rgb 0 0 1) ]
                             { url = Route.toString (Route.Guest model.roomId)
-                            , label = text (Route.roomUrl model.roomId)
+                            , label = text (baseUrl ++ Route.roomRoute model.roomId)
                             }
-                        , text ")"
                         ]
                     ]
 

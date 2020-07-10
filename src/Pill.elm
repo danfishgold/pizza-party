@@ -11,6 +11,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
+import Html.Attributes
 
 
 
@@ -89,6 +90,7 @@ props colors side withHover =
         ++ [ Border.color colors.border
            , Background.color colors.fill
            , width (shrink |> minimum 30)
+           , height (shrink |> minimum 30)
            , Font.center
            ]
         ++ (if withHover then
@@ -114,10 +116,10 @@ button attrs onClick content =
 
 counter : msg -> msg -> Int -> Element.Color -> Element msg
 counter decrease increase value color =
-    row [ height shrink ]
+    row [ height shrink, Element.htmlAttribute <| Html.Attributes.style "z-index" "0" ]
         [ counterButton Left decrease "–"
         , el (props { standardColors | fill = color } Middle False)
-            (text <| String.fromInt value)
+            (el [ centerX, centerY ] <| text (String.fromInt value))
         , counterButton Right increase "+"
         ]
 
@@ -125,8 +127,12 @@ counter decrease increase value color =
 counterButton : Side -> msg -> String -> Element msg
 counterButton side onClick content =
     Input.button
-        (props standardColors side True)
-        { onPress = Just onClick, label = text content }
+        (props standardColors side True
+            ++ [ Element.htmlAttribute <| Html.Attributes.style "z-index" "1" ]
+        )
+        { onPress = Just onClick
+        , label = el [ centerX, centerY ] <| text content
+        }
 
 
 segmentedControl : ( a, List a, a ) -> a -> (a -> String) -> (a -> msg) -> Element msg

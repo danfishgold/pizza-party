@@ -86,7 +86,10 @@ view size model =
         NotAsked ->
             column [ spacing 20, width fill ]
                 [ title "new party"
-                , Pill.segmentedControl ( 2, [ 3 ], 4 ) 2 String.fromInt SetSomething
+
+                -- , Pill.segmentedControl ( 2, [ 3 ], 4 ) 2 String.fromInt SetSomething
+                , paragraph []
+                    [ text "This is where you could eventually customize the pizza toppings etc." ]
                 , Pill.button [] CreateRoom "Start"
                 ]
                 |> configPanel size

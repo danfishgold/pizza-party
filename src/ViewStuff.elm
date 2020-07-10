@@ -16,7 +16,9 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
+import Element.Input as Input
 import Error exposing (Error)
+import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
 import Pill
@@ -64,19 +66,16 @@ toppingCounter decrease increase value topping =
         color =
             case value of
                 0 ->
-                    Color.gray |> Color.toRgba |> fromRgb
+                    Color.lightGray |> Color.toRgba |> fromRgb
 
                 1 ->
-                    Color.yellow |> Color.toRgba |> fromRgb
-
-                2 ->
-                    Color.orange |> Color.toRgba |> fromRgb
+                    Color.lightYellow |> Color.toRgba |> fromRgb
 
                 _ ->
-                    Color.darkOrange |> Color.toRgba |> fromRgb
+                    Color.yellow |> Color.toRgba |> fromRgb
     in
     row
-        [ width (shrink |> minimum 250)
+        [ width (shrink |> minimum 300)
         , Background.color (Element.rgb 0.9 0.9 0.9)
         , padding 10
         , Border.rounded 100
@@ -147,7 +146,8 @@ configPanel size content =
 errorOverlay : Size -> Error -> msg -> Element msg
 errorOverlay size error reload =
     el
-        [ Background.color (rgba 0.5 0.5 0.5 0.5)
+        [ htmlAttribute <| Html.Attributes.style "z-index" "100"
+        , Background.color (rgba 0.5 0.5 0.5 0.5)
         , width fill
         , height fill
         , inFront
@@ -172,7 +172,7 @@ type alias LinkColors =
 
 baseLinkButton : LinkColors -> msg -> String -> Element msg
 baseLinkButton colors onClick content =
-    el
+    Input.button
         [ Events.onClick onClick
         , Font.underline
         , Font.color colors.text
@@ -180,7 +180,10 @@ baseLinkButton colors onClick content =
         , mouseOver [ Background.color colors.hoverFill ]
         , pointer
         ]
-        (text content)
+        { onPress = Just onClick
+        , label =
+            text content
+        }
 
 
 blueLinkColors : LinkColors
