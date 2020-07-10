@@ -37,6 +37,7 @@ type alias Model =
     { state : State
     , key : Nav.Key
     , size : Size
+    , baseUrl : String
     }
 
 
@@ -62,7 +63,8 @@ type Msg
 
 
 type alias Flags =
-    ()
+    { baseUrl : String
+    }
 
 
 errorMessage : Model -> Maybe Error
@@ -94,13 +96,14 @@ errorMessage model =
 
 
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
-init () url key =
+init { baseUrl } url key =
     let
         ( model, pageCmd ) =
             updateModelWithUrl url
                 { state = Home (Tuple.first Home.init)
                 , key = key
                 , size = Size 0 0
+                , baseUrl = baseUrl
                 }
     in
     ( model, Cmd.batch [ pageCmd, Size.get SetSize ] )
@@ -256,7 +259,7 @@ body model =
             Join.view model.size subModel |> Element.map JoinMsg
 
         Host host ->
-            Host.view model.size host |> Element.map HostMsg
+            Host.view model.baseUrl model.size host |> Element.map HostMsg
 
         Guest guest ->
             Guest.view model.size guest |> Element.map GuestMsg

@@ -1,6 +1,8 @@
-const app = Elm.Main.init()
+const baseUrl = ''
 
-const socket = io.connect('/')
+const app = Elm.Main.init({ flags: { baseUrl }})
+
+const socket = io.connect(`${baseUrl}/`)
 
 // OUTGOING
 

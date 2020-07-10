@@ -1,4 +1,4 @@
-module Route exposing (Route(..), parse, push, reload, replace, roomUrl, toString)
+module Route exposing (Route(..), parse, push, reload, replace, roomRoute, toString)
 
 import Browser.Navigation as Nav
 import RoomId exposing (RoomId)
@@ -42,9 +42,9 @@ toString route =
             toString Home
 
 
-roomUrl : RoomId -> String
-roomUrl roomId =
-    "pizzaparty.glitch.me" ++ toString (Guest roomId)
+roomRoute : RoomId -> String
+roomRoute roomId =
+    toString (Guest roomId)
 
 
 push : Nav.Key -> Route -> Cmd msg
